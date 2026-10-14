@@ -114,6 +114,11 @@ header h1 span { color: var(--muted); font-weight: 700; }
 /* In-app camera: live view with a 30 cm square guide and a cm ruler on its edges; only the square is kept. */
 .cam { position: fixed; inset: 0; z-index: 20; background: #000; }
 .cam[hidden] { display: none; }
+.cam { touch-action: none; user-select: none; -webkit-user-select: none; }
+.cam img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; }
+.cam .crop-only, .cam.crop .cam-only { display: none; }
+.cam.crop .crop-only { display: block; }
+.use { justify-self: center; padding: 12px 26px; border-radius: 99px; background: #fff; color: #111; font-weight: 900; font-size: 16px; }
 .cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .cam-frame { position: absolute; left: 50%; top: 44%; width: min(84vw, 58vh); aspect-ratio: 1; transform: translate(-50%, -50%); box-shadow: 0 0 0 100vmax rgba(0,0,0,.5); border: 2px solid #fff; }
 .cam-frame svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
@@ -167,13 +172,17 @@ header h1 span { color: var(--muted); font-weight: 700; }
   <div class="toast" id="toast"></div>
 
   <div class="cam" id="cam" hidden>
-    <video id="camVideo" playsinline muted autoplay></video>
+    <video id="camVideo" class="cam-only" playsinline muted autoplay></video>
+    <img id="cropImg" class="crop-only" alt="" draggable="false">
     <div class="cam-frame" id="camFrame"><svg viewBox="0 0 300 300" aria-hidden="true" id="camRuler"></svg></div>
-    <p class="cam-hint">把 30 × 30 cm 的皮料或布料放滿框內<small>框邊的刻度是公分，可以在旁邊放一把尺對齊</small></p>
+    <p class="cam-hint cam-only">把 30 × 30 cm 的皮料或布料放滿框內<small>框邊的刻度是公分，可以在旁邊放一把尺對齊</small></p>
+    <p class="cam-hint crop-only">拖曳、雙指縮放照片，讓 30 × 30 cm 放滿框內<small>框邊的刻度是公分</small></p>
     <div class="cam-bar">
       <button type="button" id="camCancel">取消</button>
-      <button type="button" class="shutter" id="camShot" aria-label="拍照"></button>
-      <label>系統相機<input id="camNative" type="file" accept="image/*" capture="environment"></label>
+      <button type="button" class="shutter cam-only" id="camShot" aria-label="拍照"></button>
+      <button type="button" class="use crop-only" id="cropUse">使用</button>
+      <label class="cam-only">系統相機<input id="camNative" type="file" accept="image/*" capture="environment"></label>
+      <span class="crop-only"></span>
     </div>
   </div>
 </div>
@@ -329,22 +338,13 @@ function renderGrid() {
     if (editing && PRINT[b.dataset.pat].mine) return removePhoto(b.dataset.pat);
     pick("print:" + b.dataset.pat);
   }));
-  g.querySelectorAll(".snap-in").forEach(inp => inp.addEventListener("change", e => { if (e.target.files[0]) addPhoto(e.target.files[0]); e.target.value = ""; }));
+  g.querySelectorAll(".snap-in").forEach(inp => inp.addEventListener("change", e => { if (e.target.files[0]) openCrop(e.target.files[0]); e.target.value = ""; }));
   const camIn = g.querySelector(".snap-in[capture]");
   camIn.addEventListener("click", e => { if (navigator.mediaDevices?.getUserMedia) { e.preventDefault(); openCam(camIn); } });
   g.querySelector("[data-orig]").addEventListener("click", () => { if (active) setColour(null); });
 }
 
-// A photographed swatch: crop the middle square, shrink it, keep it on this phone, and pick it.
-function addPhoto(file) {
-  const img = new Image(), src = URL.createObjectURL(file);
-  img.onload = () => {
-    const side = Math.min(img.width, img.height);
-    saveSwatch(img, (img.width - side) / 2, (img.height - side) / 2, side);
-    URL.revokeObjectURL(src);
-  };
-  img.src = src;
-}
+// A photographed swatch: shrink the chosen square, keep it on this phone, and pick it.
 function saveSwatch(src, sx, sy, side) {
   const c = document.createElement("canvas");
   c.width = c.height = 640;
@@ -374,14 +374,68 @@ async function openCam(fallback) {
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1920 } }, audio: false });
   } catch { camStream = null; fallback.click(); return; }
   $("camVideo").srcObject = camStream;
-  $("cam").hidden = false;
+  $("cam").classList.remove("crop"); $("cam").hidden = false;
 }
 function closeCam() {
   if (camStream) camStream.getTracks().forEach(t => t.stop());
   camStream = null; $("camVideo").srcObject = null; $("cam").hidden = true;
+  if (crop) { URL.revokeObjectURL(crop.url); crop = null; $("cropImg").removeAttribute("src"); }
 }
+
+// A photo from the album (or the phone's own camera): shown behind the same 30 cm frame, to drag and pinch
+// until the right area fills it. Only the square is kept.
+let crop = null;
+const pointers = new Map();
+function openCrop(file) {
+  const img = $("cropImg"), url = URL.createObjectURL(file);
+  img.onload = () => {
+    $("cam").classList.add("crop"); $("cam").hidden = false;
+    const f = $("camFrame").getBoundingClientRect();
+    const s = Math.max(f.width / img.naturalWidth, f.height / img.naturalHeight);  // smallest size that fills the frame
+    crop = { url, min: s, s, x: f.left + (f.width - img.naturalWidth * s) / 2, y: f.top + (f.height - img.naturalHeight * s) / 2 };
+    drawCrop();
+  };
+  img.src = url;
+}
+// Keep the frame covered by the photo, then place it.
+function drawCrop() {
+  const img = $("cropImg"), f = $("camFrame").getBoundingClientRect(), w = img.naturalWidth * crop.s, h = img.naturalHeight * crop.s;
+  crop.x = Math.min(f.left, Math.max(f.right - w, crop.x));
+  crop.y = Math.min(f.top, Math.max(f.bottom - h, crop.y));
+  img.style.transform = `translate(${crop.x}px, ${crop.y}px) scale(${crop.s})`;
+}
+function zoomCrop(k, cx, cy) {
+  const s = Math.min(Math.max(crop.s * k, crop.min), crop.min * 12);
+  crop.x = cx - (cx - crop.x) * s / crop.s; crop.y = cy - (cy - crop.y) * s / crop.s; crop.s = s;
+  drawCrop();
+}
+const cam = $("cam");
+cam.addEventListener("pointerdown", e => { if (crop && !e.target.closest("button, label")) { pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); cam.setPointerCapture(e.pointerId); } });
+cam.addEventListener("pointermove", e => {
+  const prev = pointers.get(e.pointerId);
+  if (!crop || !prev) return;
+  const pts = [...pointers.values()];
+  if (pts.length === 1) { crop.x += e.clientX - prev.x; crop.y += e.clientY - prev.y; drawCrop(); }
+  else {
+    const other = pts.find(p => p !== prev), d0 = Math.hypot(prev.x - other.x, prev.y - other.y), d1 = Math.hypot(e.clientX - other.x, e.clientY - other.y);
+    // Pinch: zoom about the fingers' midpoint, and follow it as it moves.
+    const m0 = [(prev.x + other.x) / 2, (prev.y + other.y) / 2], m1 = [(e.clientX + other.x) / 2, (e.clientY + other.y) / 2];
+    crop.x += m1[0] - m0[0]; crop.y += m1[1] - m0[1];
+    if (d0 > 0) zoomCrop(d1 / d0, m1[0], m1[1]); else drawCrop();
+  }
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+});
+["pointerup", "pointercancel"].forEach(t => cam.addEventListener(t, e => pointers.delete(e.pointerId)));
+cam.addEventListener("wheel", e => { if (crop) { e.preventDefault(); zoomCrop(Math.exp(-e.deltaY / 300), e.clientX, e.clientY); } }, { passive: false });
+$("cropUse").addEventListener("click", () => {
+  if (!crop) return;
+  const img = $("cropImg"), f = $("camFrame").getBoundingClientRect();
+  const side = Math.min(f.width / crop.s, img.naturalWidth, img.naturalHeight);
+  saveSwatch(img, Math.max(0, (f.left - crop.x) / crop.s), Math.max(0, (f.top - crop.y) / crop.s), side);
+  closeCam();
+});
 $("camCancel").addEventListener("click", closeCam);
-$("camNative").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; closeCam(); if (f) addPhoto(f); });
+$("camNative").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; closeCam(); if (f) openCrop(f); });
 $("camShot").addEventListener("click", () => {
   const v = $("camVideo"), vw = v.videoWidth, vh = v.videoHeight;
   if (!vw) return;
