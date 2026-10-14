@@ -255,9 +255,9 @@ function ink(h) { return lum(h) > 0.55 ? mix(h, "#000000", 0.5) : mix(h, "#fffff
 function colourName(h) { return !h ? "Original" : NAME[h.toLowerCase()] || h.toUpperCase(); }
 const same = (x, y) => (x || "").toLowerCase() === (y || "").toLowerCase();
 
-// Swatch photos (the shop's and customers') are 15 cm squares, so they tile at true size on the shoe
+// Swatch photos (the shop's and customers') show as 30 cm squares: bigger than any photo, so a part never shows a seam
 // (each photo knows its pixels per cm, taking the shoe as about 26 cm long). The demo prints keep their old repeat.
-const SWATCH_CM = 15;
+const SWATCH_CM = 30;
 function patternDef(id, kind, st) {
   const it = PRINT[kind], size = it.mine || it.shop ? SWATCH_CM * st.pxPerCm : 96 * st.w / 420;
   return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${size}" height="${size}"><image href="${it.url}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice"/></pattern>`;
@@ -323,12 +323,14 @@ function renderGrid() {
   const on = it => active ? (isPrint(it) ? cur.p === it.slice(6) : !cur.p && same(cur.c, it)) : picked === it;
   const g = $("grid");
   $("hint").hidden = !!active;
+  const photoSlot = p => `<button class="sw photo" type="button" title="${p.name}" aria-label="${p.name}" aria-pressed="${on("print:" + p.key)}" data-pat="${p.key}"><i style="background-image:url('${p.url}')"></i>${editing && PRINT[p.key].mine ? '<span class="x" aria-hidden="true">×</span>' : ""}</button>`;
   // Two photo slots: some phones only offer the camera when asked for it, and only the album when not.
   g.innerHTML = `<label class="sw snap" title="Photograph a swatch" aria-label="Photograph a swatch"><i>📷</i><input class="snap-in" type="file" accept="image/*" capture="environment"></label>` +
     `<label class="sw snap" title="Choose a swatch photo" aria-label="Choose a swatch photo"><i>🖼️</i><input class="snap-in" type="file" accept="image/*"></label>` +
     `<button class="sw none" type="button" title="The shoe's own colour" aria-label="Original colour" aria-pressed="${!!cur && cur.c === null && !cur.p}" data-orig="1"><i style="font-size:20px">↺</i></button>` +
+    [...myPhotos].reverse().map(photoSlot).join("") +  // newest customer photos right after ↺
     COLOURS.map(([n, h]) => `<button class="sw" type="button" title="${n}" aria-label="${n}" aria-pressed="${on(h)}" data-c="${h}"><i style="background:${h}"></i></button>`).join("") +
-    [...SHOP.filter(x => x.kind === "leather"), ...PRINTS, ...SHOP.filter(x => x.kind !== "leather"), ...myPhotos].map(p => `<button class="sw photo" type="button" title="${p.name}" aria-label="${p.name}" aria-pressed="${on("print:" + p.key)}" data-pat="${p.key}"><i style="background-image:url('${p.url}')"></i>${editing && PRINT[p.key].mine ? '<span class="x" aria-hidden="true">×</span>' : ""}</button>`).join("");
+    [...SHOP.filter(x => x.kind === "leather"), ...PRINTS, ...SHOP.filter(x => x.kind !== "leather")].map(photoSlot).join("");
   g.querySelectorAll("[data-c]").forEach(b => b.addEventListener("click", () => pick(b.dataset.c)));
   g.querySelectorAll("[data-pat]").forEach(b => b.addEventListener("click", () => {
     if (editing && PRINT[b.dataset.pat].mine) return removePhoto(b.dataset.pat);
@@ -343,8 +345,8 @@ function addPhoto(file) {
   const img = new Image(), src = URL.createObjectURL(file);
   img.onload = () => {
     const side = Math.min(img.width, img.height), c = document.createElement("canvas");
-    c.width = c.height = 320;
-    c.getContext("2d").drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 320, 320);
+    c.width = c.height = 640;
+    c.getContext("2d").drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 640, 640);
     URL.revokeObjectURL(src);
     const n = myPhotos.reduce((m, p) => Math.max(m, p.n), 0) + 1;
     const m = { key: "mine" + Date.now(), n, name: `My swatch ${n}`, url: c.toDataURL("image/jpeg", 0.85) };
