@@ -323,7 +323,9 @@ function renderGrid() {
   const on = it => active ? (isPrint(it) ? cur.p === it.slice(6) : !cur.p && same(cur.c, it)) : picked === it;
   const g = $("grid");
   $("hint").hidden = !!active;
-  g.innerHTML = `<label class="sw snap" title="Take or choose a swatch photo" aria-label="Take or choose a swatch photo"><i>📷</i><input id="snap" type="file" accept="image/*"></label>` +
+  // Two photo slots: some phones only offer the camera when asked for it, and only the album when not.
+  g.innerHTML = `<label class="sw snap" title="Photograph a swatch" aria-label="Photograph a swatch"><i>📷</i><input class="snap-in" type="file" accept="image/*" capture="environment"></label>` +
+    `<label class="sw snap" title="Choose a swatch photo" aria-label="Choose a swatch photo"><i>🖼️</i><input class="snap-in" type="file" accept="image/*"></label>` +
     `<button class="sw none" type="button" title="The shoe's own colour" aria-label="Original colour" aria-pressed="${!!cur && cur.c === null && !cur.p}" data-orig="1"><i style="font-size:20px">↺</i></button>` +
     COLOURS.map(([n, h]) => `<button class="sw" type="button" title="${n}" aria-label="${n}" aria-pressed="${on(h)}" data-c="${h}"><i style="background:${h}"></i></button>`).join("") +
     [...SHOP.filter(x => x.kind === "leather"), ...PRINTS, ...SHOP.filter(x => x.kind !== "leather"), ...myPhotos].map(p => `<button class="sw photo" type="button" title="${p.name}" aria-label="${p.name}" aria-pressed="${on("print:" + p.key)}" data-pat="${p.key}"><i style="background-image:url('${p.url}')"></i>${editing && PRINT[p.key].mine ? '<span class="x" aria-hidden="true">×</span>' : ""}</button>`).join("");
@@ -332,7 +334,7 @@ function renderGrid() {
     if (editing && PRINT[b.dataset.pat].mine) return removePhoto(b.dataset.pat);
     pick("print:" + b.dataset.pat);
   }));
-  $("snap").addEventListener("change", e => { if (e.target.files[0]) addPhoto(e.target.files[0]); });
+  g.querySelectorAll(".snap-in").forEach(inp => inp.addEventListener("change", e => { if (e.target.files[0]) addPhoto(e.target.files[0]); }));
   g.querySelector("[data-orig]").addEventListener("click", () => { if (active) setColour(null); });
 }
 
