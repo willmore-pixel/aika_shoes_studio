@@ -125,7 +125,7 @@ header h1 span { color: var(--muted); font-weight: 700; }
 .cam-hint { position: absolute; left: 16px; right: 16px; top: calc(14px + env(safe-area-inset-top, 0px)); margin: 0; text-align: center; color: #fff; font-size: 15px; font-weight: 800; line-height: 1.45; text-shadow: 0 1px 3px #000; }
 .cam-hint small { display: block; font-size: 12px; font-weight: 700; opacity: .85; }
 .cam-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 24px calc(22px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; color: #fff; font-weight: 800; font-size: 14px; }
-.cam-bar > :first-child { justify-self: start; } .cam-bar > :last-child { justify-self: end; position: relative; }
+.cam-bar > :first-child { justify-self: start; } .cam-bar label { justify-self: end; position: relative; }
 .cam-bar input { position: absolute; inset: 0; opacity: 0; width: 100%; }
 .shutter { width: 70px; height: 70px; border-radius: 50%; background: #fff; border: 5px solid rgba(255,255,255,.4); background-clip: padding-box; }
 .shutter:active { transform: scale(.94); }
