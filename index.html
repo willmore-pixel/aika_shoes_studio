@@ -225,13 +225,14 @@ const store = {
 // except they keep the leather shading (they're photos of leather, not canvas).
 let myPhotos = store.get("scs-photos", []);
 const addMyPhotos = () => myPhotos.forEach(m => PRINT[m.key] = { ...m, mine: true, kind: "leather" });
-// The shop's own swatch photos. On the website they come from the swatches folder (see swatches.json, built on upload);
+// The shop's own swatch photos, uploaded to the aika_swatches repo and published (cropped, listed in swatches.json) to its site;
 // leather ones keep the leather shading, canvas ones get the canvas look.
+const SWATCH_SITE = "https://willmore-pixel.github.io/aika_swatches/";
 let SHOP = [];
 async function loadShop() {
   try {
-    const r = await fetch("swatches.json", { cache: "no-store" });
-    if (r.ok) SHOP = (await r.json()).map(x => ({ key: "shop/" + x.file, name: x.name, kind: x.kind, url: x.file }));
+    const r = await fetch(SWATCH_SITE + "swatches.json", { cache: "no-store" });
+    if (r.ok) SHOP = (await r.json()).map(x => ({ key: "shop/" + x.file, name: x.name, kind: x.kind, url: SWATCH_SITE + x.file }));
   } catch {}
   SHOP.forEach(x => PRINT[x.key] = x);
 }

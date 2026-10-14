@@ -1,4 +1,4 @@
-# Rebuilds and publishes the website whenever anything is pushed to main (for example a new swatch photo).
+# Rebuilds and publishes the website whenever anything is pushed to main (swatch photos live in the aika_swatches repo).
 name: Publish website
 on:
   push:
@@ -19,11 +19,7 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install pillow pillow-heif
-      - run: python scripts/build.py
+      - run: mkdir _site && cp index.html _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
