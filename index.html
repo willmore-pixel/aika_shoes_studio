@@ -226,7 +226,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 
 <script>
 // The shop's LINE link for 加入愛花製作所 LINE (an https://line.me/... address). Until it is set, the button shares the picture instead.
-const LINE_URL = "";
+const LINE_URL = "https://line.me/R/ti/p/@247miuwj";
 
 // Plain colours, as laid out in the shop's design. Each code is what the saved picture lists.
 const COLOURS = [
@@ -309,6 +309,7 @@ const tidyState = () => ["L", "R"].forEach(f => PARTS.forEach(p => {
   if (s.p && !PRINT[s.p]) s.p = null;
 }));
 // The parts a swatch goes to ("L:a", "R:a"…). Both first parts start chosen, as in the design.
+const firstSel = () => new Set(["L:" + partsOf()[0], "R:" + partsOf()[0]]);
 let sel = new Set(["L:a", "R:a"]);
 let sideFoot = "L";  // the side view shows the foot last chosen
 let editing = false;
@@ -492,14 +493,22 @@ function renderStyles() {
   $("styles").innerHTML = Object.entries(STYLES).map(([k, s]) => `<button class="style-card" type="button" aria-pressed="${k === state.style}" data-s="${k}"><svg data-s="${k}"></svg><span>${s.name}</span></button>`).join("");
   $("styles").querySelectorAll("svg[data-s]").forEach(svg => drawView(svg, svg.dataset.s, "L", "all", "th-" + svg.dataset.s));
   $("styles").querySelectorAll("button[data-s]").forEach(b => b.addEventListener("click", () => {
-    state.style = b.dataset.s; sel = new Set(["L:a", "R:a"]); sideFoot = "L"; save(); renderAll();
+    state.style = b.dataset.s; sel = firstSel(); sideFoot = "L"; save(); renderAll();
   }));
 }
 
+// A style can be made in only some sizes (st.sizes = { women: [from, to], men: [from, to] }, set on the upload page).
+function sizesFor(k = state.style) {
+  const r = STYLES[k].sizes;
+  if (!r) return SIZES;
+  return Object.fromEntries(Object.entries(r).filter(([g]) => SIZES[g]).map(([g, [a, b]]) => [g, SIZES[g].slice(SIZES[g].indexOf(a), SIZES[g].indexOf(b) + 1)]));
+}
+const sizeOk = z => !z || (sizesFor()[z.g] || []).includes(z.v);
 function renderSizes() {
+  if (!sizeOk(state.size)) { state.size = null; save(); }
   const z = state.size;
   $("sizeNow").textContent = z ? `EU ${z.v} ${SIZE_ZH[z.g]}` : "";
-  $("sizes").innerHTML = Object.entries(SIZES).map(([g, list]) => `<div class="sz-label">${g}</div><div class="sizes">` +
+  $("sizes").innerHTML = Object.entries(sizesFor()).map(([g, list]) => `<div class="sz-label">${g}</div><div class="sizes">` +
     list.map(v => `<button class="sz" type="button" aria-pressed="${!!z && z.g === g && z.v === v}" data-g="${g}" data-v="${v}">${v}</button>`).join("") + `</div>`).join("");
   $("sizes").querySelectorAll(".sz").forEach(b => b.addEventListener("click", () => {
     const { g, v } = b.dataset;
@@ -746,7 +755,7 @@ if (LINE_URL) $("lineBtn").href = LINE_URL;
 else $("lineBtn").addEventListener("click", async e => { e.preventDefault(); const f = await makePicture(); if (!(await sharePicture(f))) showResult(f); });
 
 renderAll();
-Promise.all([loadShop(), loadStyles()]).then(() => { tidyState(); renderAll(); });
+Promise.all([loadShop(), loadStyles()]).then(() => { tidyState(); sel = firstSel(); renderAll(); });
 </script>
 
 </body></html>
