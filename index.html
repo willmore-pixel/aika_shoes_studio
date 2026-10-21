@@ -395,13 +395,13 @@ function artMarkup(st, prefix, foot, opts = {}) {
   const parts = state[foot], [bx, by, bw, bh] = st.bb, chosen = opts.chosen || new Set();
   const shape = it => `d="${it.d}"${it.t ? ` transform="${it.t}"` : ""}`;
   const fillFor = p => p === st.lace ? LACES[state.lace] : parts[p].p && PRINT[parts[p].p] ? `url(#${prefix}-${p})` : parts[p].c || "#FFFFFF";
-  const soleMap = Object.entries(opts.soleMap || {});
+  const soleMap = opts.soleMap || {};
   let defs = Object.keys(st.parts).filter(p => p !== st.lace && parts[p].p && PRINT[parts[p].p]).map(p => patternDef(`${prefix}-${p}`, parts[p].p, st)).join("");
   let n = 0, outline = "";
   const body = st.items.map((it, i) => {
     if (typeof it === "string") {
       let s = it.replaceAll("__P__", prefix);
-      for (const [from, to] of soleMap) s = s.replaceAll(`fill="${from}"`, `fill="${to}"`);
+      s = s.replace(/fill="(#[0-9a-fA-F]{6})"/g, (m, h) => soleMap[h.toLowerCase()] ? `fill="${soleMap[h.toLowerCase()]}"` : m);
       return `<g data-i="${i}">${s}</g>`;
     }
     const id = `${prefix}-cp${n++}`;
