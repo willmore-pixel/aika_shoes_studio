@@ -20,6 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: mkdir _site && cp index.html _site/ && cp -r play _site/  # AIKA PLAY at /play/
+      # The same page again at /app/, as a fresh app identity for phones whose Chrome kept a broken install of /play/.
+      - run: cp -r play _site/app && sed -i 's/"id": "aika-play-app"/"id": "aika-play-app-2"/' _site/app/manifest.webmanifest
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
