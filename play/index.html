@@ -41,6 +41,11 @@ h2 small { font-size: inherit; font-weight: 400; }
 .steps { margin: 0; padding: 0; list-style: none; counter-reset: s; color: var(--muted); font-size: 17px; line-height: 2; }
 .steps li { counter-increment: s; }
 .steps li::before { content: counter(s) ". "; }
+/* Steps 1–5 are links to their part of the page; the mini pair at the top doesn't cover what they jump to. */
+.steps a { color: var(--fg); text-decoration: underline; text-decoration-color: var(--soft); text-decoration-thickness: 1.5px; text-underline-offset: 5px; }
+#secStyle, #secSize { scroll-margin-top: 8px; }
+#stage { scroll-margin-top: 0; }
+#secDone, #lineBtn { scroll-margin-top: 92px; }
 
 .styles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .style-card { border: 1.5px solid var(--soft); border-radius: 14px; padding: 6px 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; }
@@ -159,16 +164,16 @@ h2 small { font-size: inherit; font-weight: 400; }
   <section class="fold" data-fold="how">
     <div class="head"><h2>流程說明 <small>· HOW IT WORKS</small></h2><button class="tog" type="button" aria-label="展開或收起"></button></div>
     <ol class="steps body">
-      <li>選擇鞋款</li><li>選擇尺寸</li><li>搭配顏色</li><li>儲存設計</li><li>傳送至Line</li><li>線上報價＆付款</li><li>30個工作天寄出</li>
+      <li><a href="#secStyle">選擇鞋款</a></li><li><a href="#secSize">選擇尺寸</a></li><li><a href="#stage">搭配顏色</a></li><li><a href="#secDone">儲存設計</a></li><li><a href="#lineBtn">傳送至Line</a></li><li>線上報價＆付款</li><li>30個工作天寄出</li>
     </ol>
   </section>
 
-  <section class="fold" data-fold="style">
+  <section class="fold" data-fold="style" id="secStyle">
     <div class="head"><h2>款式 <small>· Style</small></h2><span class="now" id="styleNow"></span><button class="tog" type="button" aria-label="展開或收起"></button></div>
     <div class="styles body" id="styles"></div>
   </section>
 
-  <section class="fold" data-fold="size">
+  <section class="fold" data-fold="size" id="secSize">
     <div class="head"><h2>尺寸 <small>· Size</small></h2><span class="now" id="sizeNow"></span><button class="tog" type="button" aria-label="展開或收起"></button></div>
     <div class="body" id="sizes"></div>
   </section>
@@ -203,7 +208,7 @@ h2 small { font-size: inherit; font-weight: 400; }
     <div class="chips" id="laces"></div>
   </section>
 
-  <section class="done">
+  <section class="done" id="secDone">
     <h3>完成你的設計</h3>
     <button class="big save" type="button" id="saveImg"><svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="#111" stroke-width="2.6"><path d="M23 6v24M13 21l10 10 10-10"/><path d="M4 30v10h38V30"/></svg><span>儲存圖片至手機相簿</span></button>
     <a class="big line" id="lineBtn" href="#" target="_blank" rel="noopener"><svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 6C16.5 6 4 15.6 4 27.5c0 10 8.8 18.4 20.8 20.8l2.2 9.7 9-9.3C49.7 47.2 60 38.3 60 27.5 60 15.6 47.5 6 32 6z" fill="#111"/><text x="32" y="33" fill="#fff" font-family="Arial, sans-serif" font-weight="700" font-size="14" text-anchor="middle">LINE</text></svg><span>加入愛花製作所&nbsp;LINE<br>傳送你的設計給我們</span></a>
@@ -603,6 +608,13 @@ document.querySelectorAll(".fold").forEach(f => {
     opened[k] = !opened[k]; f.dataset.open = opened[k]; t?.setAttribute("aria-expanded", opened[k]); store.set("aika-play-open", opened);
   });
 });
+// 流程說明 links: open that section if it is folded, then glide to it.
+document.querySelectorAll(".steps a").forEach(a => a.addEventListener("click", e => {
+  e.preventDefault();
+  const t = document.querySelector(a.getAttribute("href"));
+  if (t.dataset.fold && !opened[t.dataset.fold]) t.querySelector(":scope > .head").click();
+  t.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}));
 $("editMine").addEventListener("click", e => { e.stopPropagation(); editing = !editing; renderSwatches(); });
 
 // The page leaves room at the bottom for the floating swatches.
