@@ -93,12 +93,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 .empty { color: var(--muted); font-size: 14px; margin: 0; grid-column: 1 / -1; }
 
 .done { text-align: center; padding-top: 34px; }
-.done svg.ok { width: 66px; height: 66px; display: block; }
-/* The tick is a button: it shows the finished picture. */
-.done .ok-btn { display: inline-block; border-radius: 50%; }
-.done .ok-btn:active svg { transform: scale(.94); }
-.done .ok-btn[aria-busy="true"] { opacity: .5; }
-.done h3 { margin: 10px 0 30px; font-size: 22px; font-weight: 500; letter-spacing: .06em; }
+.done h3 { margin: 0 0 30px; font-size: 22px; font-weight: 500; letter-spacing: .06em; }
 .big { position: relative; width: 100%; min-height: 96px; border-radius: 22px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 20px; letter-spacing: .02em; line-height: 1.45; box-sizing: border-box; padding: 10px 60px; }
 .big + .big { margin-top: 20px; }
 .big svg { position: absolute; left: 38px; top: 50%; transform: translate(-50%, -50%); }
@@ -125,7 +120,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 .sheet .src { width: 104px; height: 88px; gap: 4px; font-size: 16px; border-radius: 16px; }
 .sheet .src svg { width: 32px; height: 32px; }
 
-/* The finished picture: shown when the phone can't hand it straight to the photo album. */
+/* The finished picture, with 下載圖片 and 關閉. */
 .result { position: fixed; inset: 0; z-index: 30; background: rgba(255,255,255,.98); display: flex; flex-direction: column; align-items: center; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); gap: 12px; box-sizing: border-box; }
 .result[hidden] { display: none; }
 .result img { flex: 1; min-height: 0; max-width: 100%; object-fit: contain; box-shadow: 0 2px 12px rgba(0,0,0,.15); -webkit-touch-callout: default; }
@@ -209,7 +204,6 @@ h2 small { font-size: inherit; font-weight: 400; }
   </section>
 
   <section class="done">
-    <button class="ok-btn" type="button" id="previewBtn" aria-label="預覽你的設計"><svg class="ok" viewBox="0 0 66 66" fill="none" stroke="#111" stroke-width="2.6"><circle cx="33" cy="33" r="31"/><path d="M21 33l8 8 16-16" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <h3>完成你的設計</h3>
     <button class="big save" type="button" id="saveImg"><svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="#111" stroke-width="2.6"><path d="M23 6v24M13 21l10 10 10-10"/><path d="M4 30v10h38V30"/></svg><span>儲存圖片至手機相簿</span></button>
     <a class="big line" id="lineBtn" href="#" target="_blank" rel="noopener"><svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 6C16.5 6 4 15.6 4 27.5c0 10 8.8 18.4 20.8 20.8l2.2 9.7 9-9.3C49.7 47.2 60 38.3 60 27.5 60 15.6 47.5 6 32 6z" fill="#111"/><text x="32" y="33" fill="#fff" font-family="Arial, sans-serif" font-weight="700" font-size="14" text-anchor="middle">LINE</text></svg><span>加入愛花製作所&nbsp;LINE<br>傳送你的設計給我們</span></a>
@@ -613,25 +607,25 @@ $("editMine").addEventListener("click", e => { e.stopPropagation(); editing = !e
 
 // The page leaves room at the bottom for the floating swatches.
 const sheet = $("sheet");
-let sheetH = store.get("aika-play-sheet-h", 0), sheetDrag = null, sheetDragged = false;  // swatch area height in px; 0 = full
+let sheetH = store.get("aika-play-sheet-h", 0), sheetDrag = null, sheetDragged = false;  // swatch area height in px; 0 = the usual height
 new ResizeObserver(() => { document.querySelector(".page").style.paddingBottom = sheet.offsetHeight + 24 + "px"; placeSheet(); }).observe(sheet);
 
 // Hold the panel's top bar and drag it up or down (height remembered on this phone); it stays on the bottom edge.
 // Let go when less than half a row of swatches shows and it tucks away; tucked, drag the bar up to pull it out again.
-const sheetBody = sheet.querySelector(".sheet-body");
+const sheetBody = sheet.querySelector(".sheet-body"), sheetHead = sheet.querySelector(".sheet-head");
 // Heights of the swatch area without its padding, the way its max-height counts them.
 const bodyPad = () => { const c = getComputedStyle(sheetBody); return parseFloat(c.paddingTop) + parseFloat(c.paddingBottom); };
 const bodyNow = () => sheetBody.clientHeight - bodyPad();
-const bodyMax = () => Math.min(sheetBody.scrollHeight - bodyPad(), innerHeight * .42, 400);
+// Tallest it drags to: all the swatches, or up to near the top of the screen.
+const bodyMax = () => Math.max(0, Math.min(sheetBody.scrollHeight - bodyPad(), innerHeight - sheetHead.offsetHeight - bodyPad() - 48));
 const halfRow = () => (sheet.querySelector(".sw")?.offsetHeight || 52) / 2;
 function placeSheet() {
   if (sheetDrag?.moving) return;
-  sheetBody.style.maxHeight = opened.sheet && sheetH && sheetH < bodyMax() ? sheetH + "px" : "";
+  sheetBody.style.maxHeight = opened.sheet && sheetH ? Math.min(sheetH, bodyMax()) + "px" : "";
 }
 function setSheetOpen(v) {
   opened.sheet = v; sheet.dataset.open = v; store.set("aika-play-open", opened);
 }
-const sheetHead = sheet.querySelector(".sheet-head");
 sheetHead.addEventListener("pointerdown", e => {
   if (e.button) return;
   sheetDrag = { id: e.pointerId, sy: e.clientY, h: opened.sheet ? bodyNow() : 0, moving: false };
@@ -646,8 +640,7 @@ sheetHead.addEventListener("pointermove", e => {
     d.moving = true; sheet.classList.add("dragging");
     if (!opened.sheet) { sheetBody.style.maxHeight = "0px"; sheet.dataset.open = true; }  // pull it out from nothing
   }
-  const max = bodyMax(), h = Math.max(0, Math.min(max, d.h - dy));
-  sheetBody.style.maxHeight = h >= max ? "" : h + "px";
+  sheetBody.style.maxHeight = Math.max(0, Math.min(bodyMax(), d.h - dy)) + "px";
 });
 const endSheetDrag = e => {
   const d = sheetDrag;
@@ -658,7 +651,7 @@ const endSheetDrag = e => {
   sheetDragged = true;
   const h = bodyNow();
   if (h < halfRow()) setSheetOpen(false);  // keeps the last height for when it opens again
-  else { setSheetOpen(true); sheetH = sheetBody.style.maxHeight ? h : 0; store.set("aika-play-sheet-h", sheetH); }
+  else { setSheetOpen(true); sheetH = h; store.set("aika-play-sheet-h", sheetH); }
   placeSheet();
 };
 sheetHead.addEventListener("pointerup", endSheetDrag);
@@ -886,22 +879,15 @@ async function sharePicture(file) {
   }
   return false;
 }
+// The grey button shows the picture first; 下載圖片 there saves it.
 $("saveImg").addEventListener("click", async () => {
   const b = $("saveImg");
-  if (b.getAttribute("aria-busy") === "true") return;
-  b.setAttribute("aria-busy", "true");
-  try { const f = await makePicture(); if (!(await sharePicture(f))) showResult(f); }
-  finally { b.removeAttribute("aria-busy"); }
-});
-$("resultClose").addEventListener("click", () => $("result").hidden = true);
-// The tick above 完成你的設計 previews the picture.
-$("previewBtn").addEventListener("click", async () => {
-  const b = $("previewBtn");
   if (b.getAttribute("aria-busy") === "true") return;
   b.setAttribute("aria-busy", "true");
   try { showResult(await makePicture()); }
   finally { b.removeAttribute("aria-busy"); }
 });
+$("resultClose").addEventListener("click", () => $("result").hidden = true);
 if (LINE_URL) $("lineBtn").href = LINE_URL;
 else $("lineBtn").addEventListener("click", async e => { e.preventDefault(); const f = await makePicture(); if (!(await sharePicture(f))) showResult(f); });
 
