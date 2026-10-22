@@ -88,7 +88,11 @@ h2 small { font-size: inherit; font-weight: 400; }
 .empty { color: var(--muted); font-size: 14px; margin: 0; grid-column: 1 / -1; }
 
 .done { text-align: center; padding-top: 34px; }
-.done svg.ok { width: 66px; height: 66px; }
+.done svg.ok { width: 66px; height: 66px; display: block; }
+/* The tick is a button: it shows the finished picture. */
+.done .ok-btn { display: inline-block; border-radius: 50%; }
+.done .ok-btn:active svg { transform: scale(.94); }
+.done .ok-btn[aria-busy="true"] { opacity: .5; }
 .done h3 { margin: 10px 0 30px; font-size: 22px; font-weight: 500; letter-spacing: .06em; }
 .big { position: relative; width: 100%; min-height: 96px; border-radius: 22px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 20px; letter-spacing: .02em; line-height: 1.45; box-sizing: border-box; padding: 10px 60px; }
 .big + .big { margin-top: 20px; }
@@ -108,6 +112,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 .sheet.dragging .sheet-head { cursor: grabbing; }
 .sheet .sub h2 { font-size: 17px; }
 .sheet .grip { position: absolute; left: 50%; top: 7px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--soft); }
+.sheet[data-open="false"] .grip { display: none; }
 .sheet[data-open="false"] .sheet-head { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
 .sheet-body { margin: 0; max-height: min(42vh, 400px); overflow-y: auto; overscroll-behavior: contain; padding: 0 20px calc(16px + env(safe-area-inset-bottom, 0px)); }
 .src-head { margin: 0; font-size: 17px; font-weight: 500; letter-spacing: .02em; }
@@ -195,7 +200,7 @@ h2 small { font-size: inherit; font-weight: 400; }
   </section>
 
   <section class="done">
-    <svg class="ok" viewBox="0 0 66 66" fill="none" stroke="#111" stroke-width="2.6"><circle cx="33" cy="33" r="31"/><path d="M21 33l8 8 16-16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <button class="ok-btn" type="button" id="previewBtn" aria-label="預覽你的設計"><svg class="ok" viewBox="0 0 66 66" fill="none" stroke="#111" stroke-width="2.6"><circle cx="33" cy="33" r="31"/><path d="M21 33l8 8 16-16" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <h3>完成你的設計</h3>
     <button class="big save" type="button" id="saveImg"><svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="#111" stroke-width="2.6"><path d="M23 6v24M13 21l10 10 10-10"/><path d="M4 30v10h38V30"/></svg><span>儲存圖片至手機相簿</span></button>
     <a class="big line" id="lineBtn" href="#" target="_blank" rel="noopener"><svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 6C16.5 6 4 15.6 4 27.5c0 10 8.8 18.4 20.8 20.8l2.2 9.7 9-9.3C49.7 47.2 60 38.3 60 27.5 60 15.6 47.5 6 32 6z" fill="#111"/><text x="32" y="33" fill="#fff" font-family="Arial, sans-serif" font-weight="700" font-size="14" text-anchor="middle">LINE</text></svg><span>加入愛花製作所&nbsp;LINE<br>傳送你的設計給我們</span></a>
@@ -852,6 +857,14 @@ $("saveImg").addEventListener("click", async () => {
   finally { b.removeAttribute("aria-busy"); }
 });
 $("resultClose").addEventListener("click", () => $("result").hidden = true);
+// The tick above 完成你的設計 previews the picture.
+$("previewBtn").addEventListener("click", async () => {
+  const b = $("previewBtn");
+  if (b.getAttribute("aria-busy") === "true") return;
+  b.setAttribute("aria-busy", "true");
+  try { showResult(await makePicture()); }
+  finally { b.removeAttribute("aria-busy"); }
+});
 if (LINE_URL) $("lineBtn").href = LINE_URL;
 else $("lineBtn").addEventListener("click", async e => { e.preventDefault(); const f = await makePicture(); if (!(await sharePicture(f))) showResult(f); });
 
