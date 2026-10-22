@@ -579,29 +579,16 @@ function renderOptions() {
   row("laces", Object.keys(LACES), state.lace, n => state.lace = n);
 }
 
-// 抽卡: every part of both shoes gets a random swatch (colour, leather or fabric), with a random sole and laces.
-// It flicks through a few draws first, like shuffling cards. 重選: every part back to white, first sole, beige laces.
-const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-let shuffling = false;
-function draw() {
+// 抽卡: every part of both shoes gets a random swatch (colour, leather or fabric), and laces if the style has them.
+// The sole stays as chosen. 重選: every part back to white, first sole, beige laces.
+$("shuffle").addEventListener("click", () => {
   const pool = [...COLOURS.map(c => c[1]), ...Object.keys(PRINT).map(k => "print:" + k)], any = a => a[Math.floor(Math.random() * a.length)];
   ["L", "R"].forEach(f => partsOf().forEach(p => {
     const it = any(pool);
     state[f][p] = isPrint(it) ? { c: null, p: it.slice(6) } : { c: it, p: null };
   }));
-  state.sole = any(solesOf()).name;
   if (STYLES[state.style].lace) state.lace = any(Object.keys(LACES));
-}
-$("shuffle").addEventListener("click", async () => {
-  if (shuffling) return;
-  shuffling = true;
-  try {
-    for (let i = reduceMotion ? 1 : 6; i > 0; i--) {
-      draw(); renderStage();
-      if (i > 1) await new Promise(ok => setTimeout(ok, 70));
-    }
-    save(); renderAll();
-  } finally { shuffling = false; }
+  save(); renderAll();
 });
 $("resetAll").addEventListener("click", () => {
   state.L = blank(); state.R = blank(); state.sole = solesOf()[0].name; state.lace = "Beige";
