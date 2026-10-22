@@ -437,7 +437,7 @@ function prep(st) {
 }
 
 // A chosen part's dashed outline follows the edge of what can be seen of it: its drawn shape minus everything
-// painted over it (other parts, the sole, the insole). Found once per drawing by painting that onto a canvas and tracing its edge.
+// painted over it (other parts, the sole, the insole), except the laces, which lie on top of the outline instead. Found once per drawing by painting that onto a canvas and tracing its edge.
 const TRACE_PX = 3;  // canvas pixels per drawing unit
 function seenOutline(st, i) {
   const c = (st._seen ||= {});
@@ -450,7 +450,7 @@ async function traceSeen(st, i) {
   const shape = q => `d="${q.d}"${q.t ? ` transform="${q.t}"` : ""}`;
   const over = st.items.slice(i + 1).map(q => typeof q === "string"
     ? q.replaceAll("__P__", "tr").replace(/fill="(?!none)[^"]*"/g, 'fill="#000"').replace(/stroke="(?!none)[^"]*"/g, 'stroke="none"')
-    : q.part === it.part ? "" : `<path ${shape(q)} fill="#000"/>`).join("");
+    : q.part === it.part || q.part === st.lace ? "" : `<path ${shape(q)} fill="#000"/>`).join("");
   const own = `<path ${shape(it)} fill="#fff"${it.r ? ` fill-rule="${it.r}"` : ""}/>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="${vx} ${vy} ${vw} ${vh}"><defs>${(st.defs || "").replaceAll("__P__", "tr")}</defs>` +
     (it.c ? `<g clip-path="url(#tr-${it.c})">${own}</g>` : own) + over + `</svg>`;
@@ -515,7 +515,8 @@ function artMarkup(st, prefix, foot, opts = {}) {
   const soleMap = opts.soleMap || {};
   let defs = Object.keys(st.parts).filter(p => p !== st.lace && parts[p].p && PRINT[parts[p].p]).map(p => patternDef(`${prefix}-${p}`, parts[p].p, st)).join("");
   let n = 0, outline = "";
-  const body = st.items.map((it, i) => {
+  const traced = {};  // traced outlines, keyed by the item they go just before: the next laces, so the laces lie over them
+  const parts2 = st.items.map((it, i) => {
     if (typeof it === "string") {
       let s = it.replaceAll("__P__", prefix);
       s = s.replace(/fill="(#[0-9a-fA-F]{6})"/g, (m, h) => soleMap[h.toLowerCase()] ? `fill="${soleMap[h.toLowerCase()]}"` : m);
@@ -524,7 +525,8 @@ function artMarkup(st, prefix, foot, opts = {}) {
     const id = `${prefix}-cp${n++}`;
     defs += `<clipPath id="${id}"><path ${shape(it)}${it.r ? ` clip-rule="${it.r}"` : ""}/></clipPath>`;
     const seen = chosen.has(it.part) && seenOutline(st, i);
-    if (seen) outline += `<path d="${seen}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="4" stroke-linejoin="round"/><path d="${seen}" fill="none" stroke="#6b7280" stroke-width="2.6" stroke-dasharray="7 4.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const k = seen && st.items.findIndex((q, j) => j > i && typeof q !== "string" && q.part === st.lace);
+    if (seen) traced[k < 0 ? st.items.length : k] = (traced[k < 0 ? st.items.length : k] || "") + `<path d="${seen}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="4" stroke-linejoin="round"/><path d="${seen}" fill="none" stroke="#6b7280" stroke-width="2.6" stroke-dasharray="7 4.5" stroke-linecap="round" stroke-linejoin="round"/>`;
     else if (chosen.has(it.part)) {  // until the traced edge is ready
       const later = st.items.slice(i + 1).filter(q => typeof q !== "string" && !chosen.has(q.part));
       defs += `<mask id="${id}-hl" maskUnits="userSpaceOnUse" x="${bx - 10}" y="${by - 10}" width="${bw + 20}" height="${bh + 20}"><rect x="${bx - 10}" y="${by - 10}" width="${bw + 20}" height="${bh + 20}" fill="#fff"/>${later.map(q => `<path ${shape(q)} fill="#000"/>`).join("")}</mask>`;
@@ -533,7 +535,8 @@ function artMarkup(st, prefix, foot, opts = {}) {
     const rect = `<rect${opts.interactive && it.part !== st.lace ? ` class="hit" data-part="${it.part}" pointer-events="visiblePainted"` : ""} x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${fillFor(it.part)}" clip-path="url(#${id})"/>`;
     return (it.c ? `<g clip-path="url(#${prefix}-${it.c})">${rect}</g>` : rect) +
       (it.stroke ? `<path ${shape(it)} fill="none" stroke="${it.stroke}" stroke-width="${it.sw}" stroke-miterlimit="10"/>` : "");
-  }).join("");
+  });
+  const body = parts2.map((s, i) => (traced[i] || "") + s).join("") + (traced[st.items.length] || "");
   return `<defs>${(st.defs || "").replaceAll("__P__", prefix)}${defs}</defs><g pointer-events="none">${body}${outline}</g>`;
 }
 
