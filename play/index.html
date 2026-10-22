@@ -126,6 +126,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 .result[hidden] { display: none; }
 .result img { flex: 1; min-height: 0; max-width: 100%; object-fit: contain; box-shadow: 0 2px 12px rgba(0,0,0,.15); -webkit-touch-callout: default; }
 .result p { margin: 0; color: var(--muted); font-size: 15px; text-align: center; }
+.result p.warn { color: var(--fg); font-weight: 500; }
 .result .row { display: flex; gap: 12px; }
 .result .row > * { padding: 12px 22px; border-radius: 99px; border: 2px solid var(--chip); font-size: 16px; text-decoration: none; color: inherit; }
 
@@ -231,9 +232,9 @@ h2 small { font-size: inherit; font-weight: 400; }
   </div>
 </div>
 <div class="result" id="result" hidden>
-  <p>長按圖片可存到手機相簿</p>
+  <p id="resultHint">長按圖片可存到手機相簿</p>
   <img id="resultImg" alt="你的設計">
-  <div class="row"><a id="resultDl" download="aika-play.png" href="#">下載圖片</a><button type="button" id="resultClose">關閉</button></div>
+  <div class="row"><a id="resultDl" download="aika-play.jpg" href="#">下載圖片</a><button type="button" id="resultClose">關閉</button></div>
 </div>
 
 <div class="cam" id="cam" hidden>
@@ -829,19 +830,34 @@ async function makePicture() {
       ctx.textAlign = "left";
     });
     ctx.fillStyle = "#aaa"; ctx.font = font(26); ctx.textAlign = "right"; ctx.fillText("AIKA PLAY · 愛花製作所", W - M, H - 40);
-    const blob = await new Promise(ok => c.toBlob(ok, "image/png"));
-    return new File([blob], `aika-play-${date.replaceAll(".", "")}.png`, { type: "image/png" });
+    // JPEG: about a quarter of a PNG's size, so it saves and downloads much faster (still sharp at this quality).
+    const blob = await new Promise(ok => c.toBlob(ok, "image/jpeg", 0.92));
+    return new File([blob], `aika-play-${date.replaceAll(".", "")}.jpg`, { type: "image/jpeg" });
   } finally { urlOf = it => it.url; }
 }
 
 // Hand the picture to the phone's share sheet (where 儲存影像 puts it in the album); otherwise show it to long-press or download.
-let lastUrl = null;
-function showResult(file) {
+let lastUrl = null, lastFile = null;
+const HINT = "長按圖片可存到手機相簿";
+async function showResult(file) {
   if (lastUrl) URL.revokeObjectURL(lastUrl);
-  lastUrl = URL.createObjectURL(file);
-  $("resultImg").src = lastUrl; $("resultDl").href = lastUrl; $("resultDl").download = file.name;
+  lastUrl = URL.createObjectURL(file); lastFile = file;
+  // The picture itself as a data: URL: apps' built-in browsers save a long-pressed image more reliably that way.
+  $("resultImg").src = await asDataUrl(lastUrl).catch(() => lastUrl);
+  $("resultDl").href = lastUrl; $("resultDl").download = file.name;
+  $("resultHint").textContent = HINT; $("resultHint").className = "";
   $("result").hidden = false;
 }
+// iPhone/iPad: a download link does nothing in apps' built-in browsers (Messenger, LINE…) and only goes to Files in Safari,
+// so 下載圖片 opens the share sheet (儲存影像 puts it in Photos); where there is none, say how to save it instead.
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+$("resultDl").addEventListener("click", async e => {
+  if (!IOS || !lastFile) return;
+  e.preventDefault();
+  if (await sharePicture(lastFile)) return;
+  $("resultHint").textContent = "這個 App 裡不能直接下載：請長按圖片，選「加入照片」或「儲存影像」；也可以用 Safari 開啟這個網頁。";
+  $("resultHint").className = "warn";
+});
 async function sharePicture(file) {
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file] }); return true; }
