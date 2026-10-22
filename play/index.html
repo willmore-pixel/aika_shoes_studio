@@ -436,8 +436,78 @@ function prep(st) {
   return st._prep = { top, side, glyphs };
 }
 
+// A chosen part's dashed outline follows the edge of what can be seen of it: its drawn shape minus everything
+// painted over it (other parts, the sole, the insole). Found once per drawing by painting that onto a canvas and tracing its edge.
+const TRACE_PX = 3;  // canvas pixels per drawing unit
+function seenOutline(st, i) {
+  const c = (st._seen ||= {});
+  if (!(i in c)) { c[i] = null; traceSeen(st, i).then(d => { c[i] = d; renderStage(); }, () => {}); }
+  return c[i];
+}
+async function traceSeen(st, i) {
+  const it = st.items[i], [vx, vy, vw, vh] = st.viewBox.split(/[\s,]+/).map(Number), S = TRACE_PX;
+  const W = Math.ceil(vw * S), H = Math.ceil(vh * S);
+  const shape = q => `d="${q.d}"${q.t ? ` transform="${q.t}"` : ""}`;
+  const over = st.items.slice(i + 1).map(q => typeof q === "string"
+    ? q.replaceAll("__P__", "tr").replace(/fill="(?!none)[^"]*"/g, 'fill="#000"').replace(/stroke="(?!none)[^"]*"/g, 'stroke="none"')
+    : q.part === it.part ? "" : `<path ${shape(q)} fill="#000"/>`).join("");
+  const own = `<path ${shape(it)} fill="#fff"${it.r ? ` fill-rule="${it.r}"` : ""}/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="${vx} ${vy} ${vw} ${vh}"><defs>${(st.defs || "").replaceAll("__P__", "tr")}</defs>` +
+    (it.c ? `<g clip-path="url(#tr-${it.c})">${own}</g>` : own) + over + `</svg>`;
+  const img = new Image();
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  await img.decode();
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, W, H);
+  const px = cx.getImageData(0, 0, W, H).data;
+  const f = (x, y) => x < 0 || y < 0 || x >= W || y >= H ? 0 : px[(y * W + x) * 4] * px[(y * W + x) * 4 + 3] / 255;
+  // Marching squares: each crossing sits on a cell edge, and every edge belongs to two cells, so the pieces join into loops.
+  const at = new Map(), pts = new Map(), K = W + 2;
+  const hKey = (x, y) => ((y + 1) * K + x + 1) * 2, vKey = (x, y) => ((y + 1) * K + x + 1) * 2 + 1;
+  const cut = (a, b) => (128 - a) / (b - a);
+  const link = (a, b) => { (at.get(a) || at.set(a, []).get(a)).push(b); (at.get(b) || at.set(b, []).get(b)).push(a); };
+  for (let y = -1; y < H; y++) for (let x = -1; x < W; x++) {
+    const tl = f(x, y), tr = f(x + 1, y), br = f(x + 1, y + 1), bl = f(x, y + 1);
+    const k = (tl >= 128) * 8 + (tr >= 128) * 4 + (br >= 128) * 2 + (bl >= 128);
+    if (k === 0 || k === 15) continue;
+    const T = hKey(x, y), B = hKey(x, y + 1), L = vKey(x, y), R = vKey(x + 1, y);
+    if ((tl >= 128) !== (tr >= 128)) pts.set(T, [x + cut(tl, tr), y]);
+    if ((bl >= 128) !== (br >= 128)) pts.set(B, [x + cut(bl, br), y + 1]);
+    if ((tl >= 128) !== (bl >= 128)) pts.set(L, [x, y + cut(tl, bl)]);
+    if ((tr >= 128) !== (br >= 128)) pts.set(R, [x + 1, y + cut(tr, br)]);
+    ({ 1: [[L, B]], 2: [[B, R]], 3: [[L, R]], 4: [[T, R]], 5: [[T, L], [B, R]], 6: [[T, B]], 7: [[L, T]], 8: [[L, T]], 9: [[T, B]],
+       10: [[T, R], [L, B]], 11: [[T, R]], 12: [[L, R]], 13: [[B, R]], 14: [[L, B]] })[k].forEach(([a, b]) => link(a, b));
+  }
+  const toUser = ([x, y]) => [vx + (x + .5) / S, vy + (y + .5) / S];
+  const simplify = (p, tol) => {  // Ramer–Douglas–Peucker
+    if (p.length < 3) return p;
+    let m = 0, mi = 0; const [a, b] = [p[0], p[p.length - 1]], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+    for (let j = 1; j < p.length - 1; j++) { const d = Math.abs(dy * (p[j][0] - a[0]) - dx * (p[j][1] - a[1])) / len; if (d > m) { m = d; mi = j; } }
+    return m <= tol ? [a, b] : [...simplify(p.slice(0, mi + 1), tol).slice(0, -1), ...simplify(p.slice(mi), tol)];
+  };
+  const seen = new Set(), loops = [];
+  for (const start of at.keys()) {
+    if (seen.has(start)) continue;
+    const loop = []; let prev = null, cur = start;
+    while (cur !== undefined && !seen.has(cur)) {
+      seen.add(cur); loop.push(toUser(pts.get(cur)));
+      const nx = at.get(cur).find(n => n !== prev && !seen.has(n)); prev = cur; cur = nx;
+    }
+    if (loop.length < 12) continue;  // specks
+    const xs = loop.map(q => q[0]), ys = loop.map(q => q[1]);
+    loops.push({ loop, size: Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) });
+  }
+  // Leave out rings round tiny things painted on top, such as brogue holes.
+  const big = Math.max(0, ...loops.map(l => l.size));
+  return loops.filter(l => l.size >= big * .06).map(({ loop }) => {
+    const half = Math.floor(loop.length / 2);
+    const out = [...simplify(loop.slice(0, half + 1), .08).slice(0, -1), ...simplify([...loop.slice(half), loop[0]], .08).slice(0, -1)];
+    return "M" + out.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join("L") + "Z";
+  }).join("");
+}
+
 // The drawing for one foot, with each filled area replaced by its colour or swatch, clipped to that area's exact shape.
-// Chosen parts get a grey dashed outline, hidden under any part drawn above it.
+// Chosen parts get a grey dashed outline around what can be seen of them.
 function artMarkup(st, prefix, foot, opts = {}) {
   const parts = state[foot], [bx, by, bw, bh] = st.bb, chosen = opts.chosen || new Set();
   const shape = it => `d="${it.d}"${it.t ? ` transform="${it.t}"` : ""}`;
@@ -453,10 +523,12 @@ function artMarkup(st, prefix, foot, opts = {}) {
     }
     const id = `${prefix}-cp${n++}`;
     defs += `<clipPath id="${id}"><path ${shape(it)}${it.r ? ` clip-rule="${it.r}"` : ""}/></clipPath>`;
-    if (chosen.has(it.part)) {
+    const seen = chosen.has(it.part) && seenOutline(st, i);
+    if (seen) outline += `<path d="${seen}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="4" stroke-linejoin="round"/><path d="${seen}" fill="none" stroke="#6b7280" stroke-width="2.6" stroke-dasharray="7 4.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    else if (chosen.has(it.part)) {  // until the traced edge is ready
       const later = st.items.slice(i + 1).filter(q => typeof q !== "string" && !chosen.has(q.part));
       defs += `<mask id="${id}-hl" maskUnits="userSpaceOnUse" x="${bx - 10}" y="${by - 10}" width="${bw + 20}" height="${bh + 20}"><rect x="${bx - 10}" y="${by - 10}" width="${bw + 20}" height="${bh + 20}" fill="#fff"/>${later.map(q => `<path ${shape(q)} fill="#000"/>`).join("")}</mask>`;
-      outline += `<g mask="url(#${id}-hl)"><path ${shape(it)} fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="2.6" stroke-linejoin="round"/><path ${shape(it)} fill="none" stroke="#6b7280" stroke-width="1.6" stroke-dasharray="5 3.5" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+      outline += `<g mask="url(#${id}-hl)"><path ${shape(it)} fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="4" stroke-linejoin="round"/><path ${shape(it)} fill="none" stroke="#6b7280" stroke-width="2.6" stroke-dasharray="7 4.5" stroke-linecap="round" stroke-linejoin="round"/></g>`;
     }
     const rect = `<rect${opts.interactive && it.part !== st.lace ? ` class="hit" data-part="${it.part}" pointer-events="visiblePainted"` : ""} x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${fillFor(it.part)}" clip-path="url(#${id})"/>`;
     return (it.c ? `<g clip-path="url(#${prefix}-${it.c})">${rect}</g>` : rect) +
