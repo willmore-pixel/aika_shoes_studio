@@ -219,6 +219,11 @@ h2 small { font-size: inherit; font-weight: 400; }
     <div class="chips" id="laces"></div>
   </section>
 
+  <section id="buckleSec" hidden>
+    <h2>選擇釦子 <small>· Buckle</small></h2>
+    <div class="chips" id="buckles"></div>
+  </section>
+
   <section class="done" id="secDone">
     <h3>完成你的設計</h3>
     <button class="big save" type="button" id="saveImg"><svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="#111" stroke-width="2.6"><path d="M23 6v24M13 21l10 10 10-10"/><path d="M4 30v10h38V30"/></svg><span>儲存圖片至手機相簿</span></button>
@@ -293,6 +298,10 @@ const DEFAULT_SOLES = [
 ];
 const SOLE_SRC = ["#996258", "#d8c1be", "#39323b"];
 const LACES = { Beige: "#d9c6a5", Coffee: "#6b4a35", Black: "#1c1c1e", White: "#ffffff" };
+// Buckle finishes (st.buckle names the part that is the buckle): metal bands, dark → light → dark.
+const BUCKLES = { Gold: ["#8a6a22", "#e8cf7a", "#a7842f"], Silver: ["#7c8188", "#eef0f2", "#90959b"], Black: ["#121212", "#5a5a5a", "#1e1e1e"] };
+const buckleDef = (id, name) => { const [a, b, c] = BUCKLES[name] || BUCKLES.Gold;
+  return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="9" y2="9" spreadMethod="reflect"><stop offset="0" stop-color="${a}"/><stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></linearGradient>`; };
 const SIZES = { women: ["34.5","35","35.5","36","36.5","37","37.5","38","38.5","39","39.5","40","40.5","41","41.5","42"],
                 men: ["38.5","39","39.5","40","40.5","41","41.5","42","42.5","43","43.5","44","44.5","45"] };
 const SIZE_ZH = { women: "女款", men: "男款" };
@@ -320,8 +329,10 @@ function artOf(k = state.style) {
   return so.style ? (so._st ||= { ...STYLES[k], ...so.style, soles: undefined, _prep: undefined }) : STYLES[k];
 }
 const soleTile = so => so.tile || SOLE_SRC.map(h => (so.map || {})[h] || h);
-// A style may name one of its parts as the laces (st.lace); that part takes the shoelace colour instead of a swatch.
-const partsOf = (k = state.style) => Object.keys(STYLES[k].parts).filter(p => p !== STYLES[k].lace);
+// A style may name one of its parts as the laces (st.lace) or the buckle (st.buckle); those take the shoelace
+// colour or the buckle finish instead of a swatch.
+const isHw = (st, p) => p === st.lace || p === st.buckle;
+const partsOf = (k = state.style) => Object.keys(STYLES[k].parts).filter(p => !isHw(STYLES[k], p));
 function toBlobUrl(dataUrl) {
   try {
     const [head, b64] = dataUrl.split(","), bin = atob(b64), bytes = new Uint8Array(bin.length);
@@ -361,7 +372,7 @@ addMyPhotos();
 
 // Each foot has its own parts: state.L.a is the left shoe's part A (shown as L1).
 const blank = () => Object.fromEntries(PARTS.map(p => [p, { c: null, p: null }]));
-let state = store.get("aika-play-1", null) || { style: "lite", size: null, L: blank(), R: blank(), sole: "Beige", lace: "Beige" };
+let state = store.get("aika-play-1", null) || { style: "lite", size: null, L: blank(), R: blank(), sole: "Beige", lace: "Beige", buckle: "Gold" };
 const tidyState = () => ["L", "R"].forEach(f => PARTS.forEach(p => {
   const s = state[f][p] = state[f][p] || { c: null, p: null };
   if (s.p && !PRINT[s.p]) s.p = null;
@@ -405,20 +416,26 @@ function prep(st) {
       x0: vx + (r.left - hr.left) * k, x1: vx + (r.right - hr.left) * k, y0: vy + (r.top - hr.top) * k, y1: vy + (r.bottom - hr.top) * k };
   }).filter(b => b.x1 - b.x0 > 0 || b.y1 - b.y0 > 0);
   host.remove();
-  // The widest empty band across the middle of the drawing separates the two views.
-  const byTop = [...boxes].sort((a, b) => a.y0 - b.y0);
-  let reach = -Infinity, split = null, best = vh * 0.01;
+  // The widest empty band across the middle of the drawing separates the two views. A drawing with three views
+  // (st.views: the right foot's top view, the left foot's, then the side) has two such bands.
+  const byTop = [...boxes].sort((a, b) => a.y0 - b.y0), gaps = [];
+  let reach = -Infinity;
   for (const b of byTop) {
     const gap = b.y0 - reach, mid = (b.y0 + reach) / 2;
-    if (reach > -Infinity && gap > best && mid > vy + vh * 0.2 && mid < vy + vh * 0.8) { best = gap; split = mid; }
+    if (reach > -Infinity && gap > vh * 0.01 && mid > vy + vh * 0.1 && mid < vy + vh * 0.9) gaps.push({ gap, mid });
     reach = Math.max(reach, b.y1);
   }
+  const three = st.views === 3 && gaps.length >= 2;
+  const cuts = gaps.filter(g => three || (g.mid > vy + vh * 0.2 && g.mid < vy + vh * 0.8)).sort((a, b) => b.gap - a.gap).slice(0, three ? 2 : 1).map(g => g.mid).sort((a, b) => a - b);
   const extent = list => list.length ? { x0: Math.min(...list.map(b => b.x0)), x1: Math.max(...list.map(b => b.x1)), y0: Math.min(...list.map(b => b.y0)), y1: Math.max(...list.map(b => b.y1)) } : null;
-  const top = extent(split === null ? boxes : boxes.filter(b => (b.y0 + b.y1) / 2 < split));
-  const side = split === null ? null : extent(boxes.filter(b => (b.y0 + b.y1) / 2 >= split));
+  const band = (from, to) => boxes.filter(b => (b.y0 + b.y1) / 2 >= from && (b.y0 + b.y1) / 2 < to);
+  const top = extent(band(-Infinity, cuts.length ? cuts[0] : Infinity));
+  const topL = three ? extent(band(cuts[0], cuts[1])) : null;
+  const side = cuts.length ? extent(band(cuts[cuts.length - 1], Infinity)) : null;
   // Lettering: dark filled marks with no outline, each small, sitting together on one line.
+  const lastTop = topL || top;
   const marks = boxes.filter(b => {
-    if (b.i < 0 || (b.y0 + b.y1) / 2 > top.y1) return false;
+    if (b.i < 0 || (b.y0 + b.y1) / 2 > lastTop.y1) return false;
     const fill = (b.el.getAttribute("fill") || "").toLowerCase(), stroke = b.el.getAttribute("stroke");
     return fill && fill !== "none" && !/^#f[0-9a-f]{5}$/.test(fill) && fill !== "#ffffff" && (!stroke || stroke === "none") &&
       b.x1 - b.x0 < vw * 0.06 && b.y1 - b.y0 < vh * 0.06;
@@ -433,7 +450,7 @@ function prep(st) {
     const e = extent(g.list), h = e.y1 - e.y0;
     if (g.list.length >= 4 && h < (top.y1 - top.y0) * 0.25 && e.x1 - e.x0 > 2 * h) g.list.forEach(b => glyphs.push({ i: b.i, j: b.j, cy: (e.y0 + e.y1) / 2 }));
   }
-  return st._prep = { top, side, glyphs };
+  return st._prep = { top, topL, side, glyphs };
 }
 
 // A chosen part's dashed outline follows the edge of what can be seen of it: its drawn shape minus everything
@@ -511,9 +528,10 @@ async function traceSeen(st, i) {
 function artMarkup(st, prefix, foot, opts = {}) {
   const parts = state[foot], [bx, by, bw, bh] = st.bb, chosen = opts.chosen || new Set();
   const shape = it => `d="${it.d}"${it.t ? ` transform="${it.t}"` : ""}`;
-  const fillFor = p => p === st.lace ? LACES[state.lace] : parts[p].p && PRINT[parts[p].p] ? `url(#${prefix}-${p})` : parts[p].c || "#FFFFFF";
+  const fillFor = p => p === st.lace ? LACES[state.lace] : p === st.buckle ? `url(#${prefix}-buckle)` : parts[p].p && PRINT[parts[p].p] ? `url(#${prefix}-${p})` : parts[p].c || "#FFFFFF";
   const soleMap = opts.soleMap || {};
-  let defs = Object.keys(st.parts).filter(p => p !== st.lace && parts[p].p && PRINT[parts[p].p]).map(p => patternDef(`${prefix}-${p}`, parts[p].p, st)).join("");
+  let defs = Object.keys(st.parts).filter(p => !isHw(st, p) && parts[p].p && PRINT[parts[p].p]).map(p => patternDef(`${prefix}-${p}`, parts[p].p, st)).join("") +
+    (st.buckle ? buckleDef(`${prefix}-buckle`, state.buckle) : "");
   let n = 0, outline = "";
   const traced = {};  // traced outlines, keyed by the item they go just before: the next laces, so the laces lie over them
   const parts2 = st.items.map((it, i) => {
@@ -532,7 +550,7 @@ function artMarkup(st, prefix, foot, opts = {}) {
       defs += `<mask id="${id}-hl" maskUnits="userSpaceOnUse" x="${bx - 10}" y="${by - 10}" width="${bw + 20}" height="${bh + 20}"><rect x="${bx - 10}" y="${by - 10}" width="${bw + 20}" height="${bh + 20}" fill="#fff"/>${later.map(q => `<path ${shape(q)} fill="#000"/>`).join("")}</mask>`;
       outline += `<g mask="url(#${id}-hl)"><path ${shape(it)} fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="4" stroke-linejoin="round"/><path ${shape(it)} fill="none" stroke="#6b7280" stroke-width="2.6" stroke-dasharray="7 4.5" stroke-linecap="round" stroke-linejoin="round"/></g>`;
     }
-    const rect = `<rect${opts.interactive && it.part !== st.lace ? ` class="hit" data-part="${it.part}" pointer-events="visiblePainted"` : ""} x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${fillFor(it.part)}" clip-path="url(#${id})"/>`;
+    const rect = `<rect${opts.interactive && !isHw(st, it.part) ? ` class="hit" data-part="${it.part}" pointer-events="visiblePainted"` : ""} x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${fillFor(it.part)}" clip-path="url(#${id})"/>`;
     return (it.c ? `<g clip-path="url(#${prefix}-${it.c})">${rect}</g>` : rect) +
       (it.stroke ? `<path ${shape(it)} fill="none" stroke="${it.stroke}" stroke-width="${it.sw}" stroke-miterlimit="10"/>` : "");
   });
@@ -541,18 +559,21 @@ function artMarkup(st, prefix, foot, opts = {}) {
 }
 
 // Draw one view of one foot into an <svg>: view is "top", "side" or "all". The left foot's top view is the
-// right one mirrored (the drawings show the right shoe), with the insole lettering turned back so it still reads.
+// right one mirrored (the drawings show the right shoe), with the insole lettering turned back so it still reads;
+// a drawing with a top view for each foot shows the left foot's own (its lettering, drawn mirrored, turned back too).
 function drawView(svg, styleKey, foot, view, prefix, opts = {}) {
   const st = artOf(styleKey), pr = prep(st), pad = 3;
   opts = { ...opts, soleMap: soleOf(styleKey).map };
-  const box = view === "all" || !pr.side ? null : view === "top" ? pr.top : pr.side;
+  const own = foot === "L" && view === "top" && pr.topL;
+  const box = view === "all" || !pr.side ? null : own ? pr.topL : view === "top" ? pr.top : pr.side;
   const vb = box ? [box.x0 - pad, box.y0 - pad, box.x1 - box.x0 + 2 * pad, box.y1 - box.y0 + 2 * pad] : st.viewBox.split(/[\s,]+/).map(Number);
   svg.setAttribute("viewBox", vb.join(" "));
   if (opts.size) { svg.setAttribute("width", opts.size[0]); svg.setAttribute("height", opts.size[1]); }
-  const mirror = foot === "L" && view === "top" && pr.side;
+  const mirror = foot === "L" && view === "top" && pr.side && !own;
   const art = artMarkup(st, prefix, foot, opts);
   svg.innerHTML = mirror ? art.replace(`<g pointer-events="none">`, `<g pointer-events="none" transform="matrix(1 0 0 -1 0 ${pr.top.y0 + pr.top.y1})">`) : art;
-  if (mirror) for (const g of pr.glyphs) {
+  const inL = g => pr.topL && g.cy > pr.topL.y0;
+  if (mirror || own) for (const g of pr.glyphs.filter(g => own ? inL(g) : !inL(g))) {
     const el = svg.querySelectorAll(`g[data-i="${g.i}"]`)[0]?.querySelectorAll(LEAVES)[g.j];
     if (el) el.setAttribute("transform", `matrix(1 0 0 -1 0 ${2 * g.cy}) ${el.getAttribute("transform") || ""}`);
   }
@@ -663,10 +684,12 @@ function renderOptions() {
   row("soles", solesOf().map(s => s.name), soleOf().name, n => state.sole = n);
   $("laceSec").hidden = !STYLES[state.style].lace;
   row("laces", Object.keys(LACES), state.lace, n => state.lace = n);
+  $("buckleSec").hidden = !STYLES[state.style].buckle;
+  row("buckles", Object.keys(BUCKLES), BUCKLES[state.buckle] ? state.buckle : "Gold", n => state.buckle = n);
 }
 
-// 抽卡: every part of both shoes gets a random swatch (colour, leather or fabric), and laces if the style has them.
-// The sole stays as chosen. 重選: every part back to white, first sole, beige laces.
+// 抽卡: every part of both shoes gets a random swatch (colour, leather or fabric), and laces and buckle if the style has them.
+// The sole stays as chosen. 重選: every part back to white, first sole, beige laces, gold buckle.
 $("shuffle").addEventListener("click", () => {
   const pool = [...COLOURS.map(c => c[1]), ...Object.keys(PRINT).map(k => "print:" + k)], any = a => a[Math.floor(Math.random() * a.length)];
   ["L", "R"].forEach(f => partsOf().forEach(p => {
@@ -674,10 +697,11 @@ $("shuffle").addEventListener("click", () => {
     state[f][p] = isPrint(it) ? { c: null, p: it.slice(6) } : { c: it, p: null };
   }));
   if (STYLES[state.style].lace) state.lace = any(Object.keys(LACES));
+  if (STYLES[state.style].buckle) state.buckle = any(Object.keys(BUCKLES));
   save(); renderAll();
 });
 $("resetAll").addEventListener("click", () => {
-  state.L = blank(); state.R = blank(); state.sole = solesOf()[0].name; state.lace = "Beige";
+  state.L = blank(); state.R = blank(); state.sole = solesOf()[0].name; state.lace = "Beige"; state.buckle = "Gold";
   save(); renderAll();
 });
 
@@ -905,6 +929,7 @@ async function makePicture() {
     if (hasSide) views.push(await viewImage("L", "side", artW));
     const tiles = [...["R", "L"].flatMap(f => parts.map((p, i) => ({ label: `${f}${i + 1}`, s: state[f][p] }))), { label: "Sole", sole: true }];
     if (st.lace) tiles.push({ label: "Lace", lace: true });
+    if (st.buckle) tiles.push({ label: "Buckle", buckle: true });
     const per = 5, T = 150, gap = (artW - per * T) / (per - 1), rowH = T + 110;
     const artH = views.reduce((a, v) => a + v.h, 0) + 30 * (views.length - 1);
     const H = M + artH + 70 + 150 + 50 + Math.ceil(tiles.length / per) * rowH + 30 + 90;
@@ -930,13 +955,17 @@ async function makePicture() {
         const t = soleTile(soleOf()), bands = [[0, .45, "#efe9e2"], [.45, .53, t[0]], [.53, .8, t[1]], [.8, 1, t[2]]];
         bands.forEach(([a, b, f]) => { ctx.fillStyle = f; ctx.fillRect(x, ty + a * T, T, (b - a) * T + 1); });
       } else if (t.lace) { ctx.fillStyle = LACES[state.lace]; ctx.fillRect(x, ty, T, T); }
+      else if (t.buckle) {
+        const [a, b, c] = BUCKLES[state.buckle] || BUCKLES.Gold, g = ctx.createLinearGradient(x, ty, x + T, ty + T);
+        g.addColorStop(0, a); g.addColorStop(.55, b); g.addColorStop(1, c); ctx.fillStyle = g; ctx.fillRect(x, ty, T, T);
+      }
       else if (t.s.p && imgs[t.s.p]) ctx.drawImage(imgs[t.s.p], x, ty, T, T);
       else { ctx.fillStyle = t.s.c || "#ffffff"; ctx.fillRect(x, ty, T, T); }
       ctx.restore();
       roundRect(ctx, x, ty, T, T, 16); ctx.strokeStyle = "rgba(0,0,0,.12)"; ctx.lineWidth = 2; ctx.stroke();
       ctx.textAlign = "center"; ctx.fillStyle = "#333";
       ctx.font = font(40, 500); ctx.fillText(t.label, x + T / 2, ty + T + 50);
-      const code = t.sole ? soleOf().name : t.lace ? state.lace : codeOf(t.s);
+      const code = t.sole ? soleOf().name : t.lace ? state.lace : t.buckle ? (BUCKLES[state.buckle] ? state.buckle : "Gold") : codeOf(t.s);
       let px = 32; ctx.font = font(px); while (ctx.measureText(code).width > T + gap - 8 && px > 18) ctx.font = font(--px);
       ctx.fillStyle = "#111"; ctx.fillText(code, x + T / 2, ty + T + 92);
       ctx.textAlign = "left";
@@ -989,8 +1018,13 @@ $("resultClose").addEventListener("click", () => $("result").hidden = true);
 if (LINE_URL) $("lineBtn").href = LINE_URL;
 else $("lineBtn").addEventListener("click", async e => { e.preventDefault(); const f = await makePicture(); if (!(await sharePicture(f))) showResult(f); });
 
+// The style saved on this phone may be one from the swatch site, which hasn't loaded yet: show a built-in one until it has.
+const savedStyle = state.style, standIn = STYLES[savedStyle] ? null : (state.style = Object.keys(STYLES)[0]);
 renderAll();
-Promise.all([loadShop(), loadStyles()]).then(() => { tidyState(); sel = firstSel(); renderAll(); });
+Promise.all([loadShop(), loadStyles()]).then(() => {
+  if (standIn && state.style === standIn && STYLES[savedStyle]) state.style = savedStyle;
+  tidyState(); sel = firstSel(); renderAll();
+});
 </script>
 
 </body></html>
