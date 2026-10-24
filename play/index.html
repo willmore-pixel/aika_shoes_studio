@@ -374,6 +374,8 @@ addMyPhotos();
 // Each foot has its own parts: state.L.a is the left shoe's part A (shown as L1).
 const blank = () => Object.fromEntries(PARTS.map(p => [p, { c: null, p: null }]));
 let state = store.get("aika-play-1", null) || { style: "lite", size: null, L: blank(), R: blank(), sole: "Beige", lace: "Beige", buckle: "Gold" };
+// A phone that saved its design before a style had this many parts gets the new parts blank (else the first drawing fails).
+["L", "R"].forEach(f => { state[f] = state[f] || {}; PARTS.forEach(p => state[f][p] = state[f][p] || { c: null, p: null }); });
 const tidyState = () => ["L", "R"].forEach(f => PARTS.forEach(p => {
   const s = state[f][p] = state[f][p] || { c: null, p: null };
   if (s.p && !PRINT[s.p]) s.p = null;
@@ -617,7 +619,7 @@ const has = (s, it) => isPrint(it) ? s.p === it.slice(6) : !s.p && same(s.c, it)
 const onAll = it => sel.size > 0 && [...sel].every(k => has(state[k[0]][k.slice(2)], it));
 // Some parts take only leather or only fabric (st.only = { a: "leather", c: "fabric" }). Colours count as leather;
 // the customer's own photos go anywhere.
-const kindOf = it => { if (!isPrint(it)) return "leather"; const p = PRINT[it.slice(6)] || {}; return p.mine ? "" : p.kind === "leather" ? "leather" : "fabric"; };
+const kindOf = it => { if (!isPrint(it)) return "leather"; const p = PRINT[it.slice(6)]; return !p || p.mine ? "" : p.kind === "leather" ? "leather" : "fabric"; };  // not loaded yet: no verdict
 const fits = (part, it, k = state.style) => { const o = (STYLES[k].only || {})[part]; return !o || !kindOf(it) || kindOf(it) === o; };
 const fitsSel = it => !sel.size || [...sel].some(k => fits(k.slice(2), it));
 // A part keeps a swatch it can't take (from another style) out of the picture.
