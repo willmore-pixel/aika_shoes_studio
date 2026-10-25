@@ -335,7 +335,8 @@ const soleOf = (k = state.style) => solesOf(k).find(s => s.name === state.sole) 
 // The drawing as shown: the style's own, or the one its chosen sole brings.
 function artOf(k = state.style) {
   const so = soleOf(k);
-  return so.style ? (so._st ||= { ...STYLES[k], ...so.style, soles: undefined, _prep: undefined }) : STYLES[k];
+  // A sole with its own drawing measures and traces that drawing afresh (_prep, _seen), never the base drawing's.
+  return so.style ? (so._st ||= { ...STYLES[k], ...so.style, soles: undefined, _prep: undefined, _seen: undefined }) : STYLES[k];
 }
 const soleTile = so => so.tile || SOLE_SRC.map(h => (so.map || {})[h] || h);
 // A style may name one of its parts as the laces (st.lace) or the buckle (st.buckle); those take the shoelace
@@ -443,13 +444,16 @@ function prep(st) {
   }
   const boxes = [...host.querySelectorAll(LEAVES)].filter(el => !el.closest("defs")).map(el => {
     const r = el.getBoundingClientRect(), g = el.closest("g[data-i]");
-    return { el, i: g ? +g.dataset.i : -1, j: g ? [...g.querySelectorAll(LEAVES)].indexOf(el) : -1,
+    // White fill with no outline is invisible on the page (e.g. a white backing behind a sole), so it doesn't count
+    // towards a view's size.
+    const cs = getComputedStyle(el), blank = (!cs.stroke || cs.stroke === "none") && /^rgb\(255, 255, 255\)$/.test(cs.fill);
+    return { el, blank, i: g ? +g.dataset.i : -1, j: g ? [...g.querySelectorAll(LEAVES)].indexOf(el) : -1,
       x0: vx + (r.left - hr.left) * k, x1: vx + (r.right - hr.left) * k, y0: vy + (r.top - hr.top) * k, y1: vy + (r.bottom - hr.top) * k };
   }).filter(b => b.x1 - b.x0 > 0 || b.y1 - b.y0 > 0);
   host.remove();
   // The widest empty band across the middle of the drawing separates the two views. A drawing with three views
   // (st.views: the right foot's top view, the left foot's, then the side) has two such bands.
-  const byTop = [...boxes].sort((a, b) => a.y0 - b.y0), gaps = [];
+  const ink = boxes.filter(b => !b.blank), byTop = [...ink].sort((a, b) => a.y0 - b.y0), gaps = [];
   let reach = -Infinity;
   for (const b of byTop) {
     const gap = b.y0 - reach, mid = (b.y0 + reach) / 2;
@@ -459,7 +463,7 @@ function prep(st) {
   const three = st.views === 3 && gaps.length >= 2;
   const cuts = gaps.filter(g => three || (g.mid > vy + vh * 0.2 && g.mid < vy + vh * 0.8)).sort((a, b) => b.gap - a.gap).slice(0, three ? 2 : 1).map(g => g.mid).sort((a, b) => a - b);
   const extent = list => list.length ? { x0: Math.min(...list.map(b => b.x0)), x1: Math.max(...list.map(b => b.x1)), y0: Math.min(...list.map(b => b.y0)), y1: Math.max(...list.map(b => b.y1)) } : null;
-  const band = (from, to) => boxes.filter(b => (b.y0 + b.y1) / 2 >= from && (b.y0 + b.y1) / 2 < to);
+  const band = (from, to) => ink.filter(b => (b.y0 + b.y1) / 2 >= from && (b.y0 + b.y1) / 2 < to);
   const top = extent(band(-Infinity, cuts.length ? cuts[0] : Infinity));
   const topL = three ? extent(band(cuts[0], cuts[1])) : null;
   const side = cuts.length ? extent(band(cuts[cuts.length - 1], Infinity)) : null;
@@ -566,11 +570,16 @@ async function traceSeen(st, i) {
     }
     if (loop.length < 12) continue;  // specks
     const xs = loop.map(q => q[0]), ys = loop.map(q => q[1]);
-    loops.push({ loop, size: Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) });
+    // Slivers thinner than a drawing unit on average (a part's edge peeping out from under the sole's outline) are not
+    // something anyone can see, so they get no outline.
+    let area = 0, per = 0;
+    loop.forEach(([x1, y1], j) => { const [x2, y2] = loop[(j + 1) % loop.length]; area += x1 * y2 - x2 * y1; per += Math.hypot(x2 - x1, y2 - y1); });
+    if (Math.abs(area) / per < .5) continue;
+    loops.push({ loop, area: Math.abs(area), size: Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) });
   }
-  // Leave out rings round tiny things painted on top, such as brogue holes.
-  const big = Math.max(0, ...loops.map(l => l.size));
-  return loops.filter(l => l.size >= big * .06).map(({ loop }) => {
+  // Leave out rings round tiny things painted on top, such as brogue holes, and specks next to the part's main area.
+  const big = Math.max(0, ...loops.map(l => l.size)), bigArea = Math.max(0, ...loops.map(l => l.area));
+  return loops.filter(l => l.size >= big * .06 && l.area >= bigArea * .002).map(({ loop }) => {
     const half = Math.floor(loop.length / 2);
     const out = [...simplify(loop.slice(0, half + 1), .08).slice(0, -1), ...simplify([...loop.slice(half), loop[0]], .08).slice(0, -1)];
     return "M" + out.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join("L") + "Z";
