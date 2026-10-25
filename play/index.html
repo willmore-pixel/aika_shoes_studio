@@ -290,6 +290,9 @@ h2 small { font-size: inherit; font-weight: 400; }
 // The shop's LINE link for 加入愛花製作所 LINE (an https://line.me/... address). Until it is set, the button shares the picture instead.
 const LINE_URL = "https://line.me/R/ti/p/@247miuwj";
 
+// The sample colours and prints below are for trying the page out: the trial copy shows them (SAMPLES = true), the
+// live site shows only the swatches the shop uploads.
+const SAMPLES = false;
 // Plain colours, as laid out in the shop's design. Each code is what the saved picture lists.
 const COLOURS = [
   ["C-01","#C9BC9C"],["C-02","#A48B77"],["C-03","#796A55"],["C-04","#624C3F"],["C-05","#C8A063"],["C-06","#B28147"],
@@ -708,9 +711,9 @@ function renderSwatches() {
   if (!mine.length) editing = false;
   $("mine").innerHTML = mine.map(it => tile(it, editing)).join("");
   $("editMine").textContent = editing ? "完成 Done" : "編輯 Edit";
-  const leather = [...SHOP.filter(x => x.kind === "leather").map(x => "print:" + x.key), ...COLOURS.map(c => c[1])];
-  const fabric = [...SHOP.filter(x => x.kind !== "leather"), ...PRINTS].map(x => "print:" + x.key);
-  $("leather").innerHTML = leather.map(it => tile(it)).join("");
+  const leather = [...SHOP.filter(x => x.kind === "leather").map(x => "print:" + x.key), ...(SAMPLES ? COLOURS.map(c => c[1]) : [])];
+  const fabric = [...SHOP.filter(x => x.kind !== "leather"), ...(SAMPLES ? PRINTS : [])].map(x => "print:" + x.key);
+  $("leather").innerHTML = leather.map(it => tile(it)).join("") || `<p class="empty">還沒有皮料色卡 · No leather swatches yet</p>`;
   $("fabric").innerHTML = fabric.map(it => tile(it)).join("") || `<p class="empty">還沒有布料色卡 · No fabric swatches yet</p>`;
   document.querySelectorAll(".sw[data-it]").forEach(b => b.addEventListener("click", () => {
     const it = b.dataset.it;
@@ -780,9 +783,11 @@ function renderOptions() {
 // 抽卡: every part of both shoes gets a random swatch (colour, leather or fabric), and laces and buckle if the style has them.
 // The sole stays as chosen. 重選: every part back to white, first sole, beige laces, gold buckle.
 $("shuffle").addEventListener("click", () => {
-  const pool = [...COLOURS.map(c => c[1]), ...Object.keys(PRINT).map(k => "print:" + k)], any = a => a[Math.floor(Math.random() * a.length)];
+  const shown = k => SAMPLES || !PRINTS.some(x => x.key === k);
+  const pool = [...(SAMPLES ? COLOURS.map(c => c[1]) : []), ...Object.keys(PRINT).filter(shown).map(k => "print:" + k)], any = a => a[Math.floor(Math.random() * a.length)];
   ["L", "R"].forEach(f => partsOf().forEach(p => {
     const it = any(pool.filter(it => fits(p, it)));
+    if (!it) return;
     state[f][p] = isPrint(it) ? { c: null, p: it.slice(6) } : { c: it, p: null };
   }));
   if (STYLES[state.style].lace) state.lace = any(Object.keys(LACES));
