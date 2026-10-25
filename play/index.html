@@ -419,9 +419,26 @@ function prep(st) {
   host.setAttribute("viewBox", st.viewBox); host.setAttribute("width", vw); host.setAttribute("height", vh);
   host.style.cssText = "position:absolute;left:-99999px;top:0;visibility:hidden";
   host.innerHTML = `<defs>${(st.defs || "").replaceAll("__P__", "mz")}</defs>` + st.items.map((it, i) => typeof it === "string"
-    ? `<g data-i="${i}">${it.replaceAll("__P__", "mz")}</g>` : `<path d="${it.d}"${it.t ? ` transform="${it.t}"` : ""}/>`).join("");
+    ? `<g data-i="${i}">${it.replaceAll("__P__", "mz")}</g>` : `<path data-p="${i}" d="${it.d}"${it.t ? ` transform="${it.t}"` : ""}${it.r ? ` fill-rule="${it.r}"` : ""}/>`).join("");
   document.body.appendChild(host);
   const hr = host.getBoundingClientRect(), k = vw / hr.width;
+  // Brogue holes: tiny white dots. Each belongs to the part it is punched through (the top part shape under it, drawn
+  // before it), so a part in fabric can be shown without them.
+  const partEls = [...host.querySelectorAll("path[data-p]")].map(el => ({ el, i: +el.dataset.p, part: st.items[+el.dataset.p].part }));
+  const white = f => /^(#fff|#ffffff|white|rgb\(100%,\s*100%,\s*100%\)|rgb\(255,\s*255,\s*255\))$/i.test(f || "");
+  const holes = [];
+  for (const el of host.querySelectorAll("g[data-i] path, g[data-i] circle, g[data-i] ellipse")) {
+    if (!white(el.getAttribute("fill"))) continue;
+    const r = el.getBoundingClientRect(), w = r.width * k, h = r.height * k;
+    if (!w || !h || Math.max(w, h) > vw * 0.012 || w / h > 2.5 || h / w > 2.5) continue;
+    const i = +el.closest("g[data-i]").dataset.i, cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const under = partEls.filter(q => q.i < i).reverse().find(q => {
+      const m = q.el.getScreenCTM(); if (!m) return false;
+      const pt = new DOMPoint(cx, cy).matrixTransform(m.inverse());
+      return q.el.isPointInFill(pt);
+    });
+    if (under) holes.push({ i, j: [...el.closest("g[data-i]").querySelectorAll(LEAVES)].indexOf(el), part: under.part });
+  }
   const boxes = [...host.querySelectorAll(LEAVES)].filter(el => !el.closest("defs")).map(el => {
     const r = el.getBoundingClientRect(), g = el.closest("g[data-i]");
     return { el, i: g ? +g.dataset.i : -1, j: g ? [...g.querySelectorAll(LEAVES)].indexOf(el) : -1,
@@ -485,7 +502,7 @@ function prep(st) {
     if (r && !mirrored(g, r)) continue;
     g.list.forEach(b => glyphs.push({ i: b.i, j: b.j, cy: g.cy }));
   }
-  return st._prep = { top, topL, side, glyphs };
+  return st._prep = { top, topL, side, glyphs, holes };
 }
 
 // A chosen part's dashed outline follows the edge of what can be seen of it: its drawn shape minus everything
@@ -612,6 +629,11 @@ function drawView(svg, styleKey, foot, view, prefix, opts = {}) {
     const el = svg.querySelectorAll(`g[data-i="${g.i}"]`)[0]?.querySelectorAll(LEAVES)[g.j];
     if (el) el.setAttribute("transform", `matrix(1 0 0 -1 0 ${2 * g.cy}) ${el.getAttribute("transform") || ""}`);
   }
+  // A part in fabric has no brogue holes (they are punched in leather only).
+  const fabric = p => { const s = (state[foot] || {})[p], it = s && s.p && PRINT[s.p]; return !!it && !it.mine && it.kind !== "leather"; };
+  const groups = svg.querySelectorAll("g[data-i]"), byI = {};
+  groups.forEach(g => byI[g.dataset.i] ||= g);
+  for (const h of pr.holes) if (fabric(h.part)) byI[h.i]?.querySelectorAll(LEAVES)[h.j]?.setAttribute("display", "none");
   return vb;
 }
 
