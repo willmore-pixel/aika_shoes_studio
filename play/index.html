@@ -407,9 +407,13 @@ const same = (x, y) => (x || "").toLowerCase() === (y || "").toLowerCase();
 // (the drawing knows its units per cm, taking the shoe as about 26 cm long). The demo prints keep their old repeat (~6.5 cm).
 const SWATCH_CM = 30, DEMO_CM = 6.5;
 let urlOf = it => it.url;  // swapped for inline copies while the picture is drawn
-function patternDef(id, key, st) {
+// Prints lie with the top of the photo pointing right (towards the heel), except on the parts a style lists in
+// st.up (counters, heels…), where it points up. Never mirrored: on a left top view drawn as the right one flipped,
+// the print is flipped back.
+function patternDef(id, key, st, part, flipped) {
   const it = PRINT[key], size = (it.mine || it.shop ? SWATCH_CM : DEMO_CM) * st.pxPerCm;
-  return `<pattern id="${id}" patternUnits="userSpaceOnUse" x="${st.bb[0]}" y="${st.bb[1]}" width="${size}" height="${size}"><image href="${urlOf(it)}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice"/></pattern>`;
+  const turn = `${flipped ? `matrix(1 0 0 -1 0 ${2 * st.bb[1]}) ` : ""}${(st.up || []).includes(part) ? "" : `rotate(90 ${st.bb[0]} ${st.bb[1]})`}`;
+  return `<pattern id="${id}" patternUnits="userSpaceOnUse" x="${st.bb[0]}" y="${st.bb[1]}" width="${size}" height="${size}"${turn.trim() ? ` patternTransform="${turn.trim()}"` : ""}><image href="${urlOf(it)}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice"/></pattern>`;
 }
 
 // Measure a drawing once: where the top view ends and the side view starts, and which small filled marks
@@ -593,7 +597,7 @@ function artMarkup(st, prefix, foot, opts = {}) {
   const shape = it => `d="${it.d}"${it.t ? ` transform="${it.t}"` : ""}`;
   const fillFor = p => p === st.lace ? LACES[state.lace] : p === st.buckle ? `url(#${prefix}-buckle)` : parts[p].p && PRINT[parts[p].p] ? `url(#${prefix}-${p})` : parts[p].c || "#FFFFFF";
   const soleMap = opts.soleMap || {};
-  let defs = Object.keys(st.parts).filter(p => !isHw(st, p) && parts[p].p && PRINT[parts[p].p]).map(p => patternDef(`${prefix}-${p}`, parts[p].p, st)).join("") +
+  let defs = Object.keys(st.parts).filter(p => !isHw(st, p) && parts[p].p && PRINT[parts[p].p]).map(p => patternDef(`${prefix}-${p}`, parts[p].p, st, p, opts.flipped)).join("") +
     (st.buckle ? buckleDef(`${prefix}-buckle`, state.buckle) : "");
   let n = 0, outline = "";
   const traced = {};  // traced outlines, keyed by the item they go just before: the next laces, so the laces lie over them
@@ -633,7 +637,7 @@ function drawView(svg, styleKey, foot, view, prefix, opts = {}) {
   svg.setAttribute("viewBox", vb.join(" "));
   if (opts.size) { svg.setAttribute("width", opts.size[0]); svg.setAttribute("height", opts.size[1]); }
   const mirror = foot === "L" && view === "top" && pr.side && !own;
-  const art = artMarkup(st, prefix, foot, opts);
+  const art = artMarkup(st, prefix, foot, { ...opts, flipped: mirror });
   svg.innerHTML = mirror ? art.replace(`<g pointer-events="none">`, `<g pointer-events="none" transform="matrix(1 0 0 -1 0 ${pr.top.y0 + pr.top.y1})">`) : art;
   const inL = g => pr.topL && g.cy > pr.topL.y0;
   if (mirror || own) for (const g of pr.glyphs.filter(g => own ? inL(g) : !inL(g))) {
