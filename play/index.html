@@ -334,6 +334,9 @@ const soleTile = so => so.tile || SOLE_SRC.map(h => (so.map || {})[h] || h);
 // colour or the buckle finish instead of a swatch.
 const isHw = (st, p) => p === st.lace || p === st.buckle;
 const partsOf = (k = state.style) => Object.keys(STYLES[k].parts).filter(p => !isHw(STYLES[k], p));
+// A part's name on its chip and in the saved picture: R 1, R 2 … numbered without the heel, which is called 高跟.
+const isHeel = (p, k = state.style) => /^\s*(heel|高跟)\s*$/i.test(STYLES[k].parts[p] || "");
+const partLabel = (f, p, gap = "", k = state.style) => f + gap + (isHeel(p, k) ? "高跟" : partsOf(k).filter(q => !isHeel(q, k)).indexOf(p) + 1);
 function toBlobUrl(dataUrl) {
   try {
     const [head, b64] = dataUrl.split(","), bin = atob(b64), bytes = new Uint8Array(bin.length);
@@ -448,10 +451,33 @@ function prep(st) {
     const g = groups[groups.length - 1];
     if (g && b.y0 <= g.y1 + vh * 0.004) { g.list.push(b); g.y1 = Math.max(g.y1, b.y1); } else groups.push({ list: [b], y0: b.y0, y1: b.y1 });
   }
-  const glyphs = [];
+  const lines = [];
   for (const g of groups) {
     const e = extent(g.list), h = e.y1 - e.y0;
-    if (g.list.length >= 4 && h < (top.y1 - top.y0) * 0.25 && e.x1 - e.x0 > 2 * h) g.list.forEach(b => glyphs.push({ i: b.i, j: b.j, cy: (e.y0 + e.y1) / 2 }));
+    if (g.list.length >= 4 && h < (top.y1 - top.y0) * 0.25 && e.x1 - e.x0 > 2 * h) lines.push({ list: g.list, e, cy: (e.y0 + e.y1) / 2 });
+  }
+  // The left foot's own top view may have its lettering drawn mirrored or already readable (and the line itself may
+  // slant the other way). Each mark's height above or below the line through the lettering tells: a mirrored mark sits
+  // on the other side of the line from its match in the right foot's lettering, so only then is it turned.
+  const marksOf = g => {
+    const pts = g.list.map(b => [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, b.x1 - b.x0, b.y1 - b.y0]), n = pts.length;
+    const mx = pts.reduce((s, p) => s + p[0], 0) / n, my = pts.reduce((s, p) => s + p[1], 0) / n;
+    const sxx = pts.reduce((s, p) => s + (p[0] - mx) ** 2, 0), a = sxx ? pts.reduce((s, p) => s + (p[0] - mx) * (p[1] - my), 0) / sxx : 0;
+    return pts.map(([x, y, w, h]) => ({ x: x - g.e.x0, r: y - my - a * (x - mx), w, h }));
+  };
+  const mirrored = (g, r) => {
+    const R = marksOf(r); let same = 0, flip = 0;
+    for (const m of marksOf(g)) {
+      const q = R.reduce((best, q) => Math.abs(q.x - m.x) + Math.abs(q.w - m.w) + Math.abs(q.h - m.h) < Math.abs(best.x - m.x) + Math.abs(best.w - m.w) + Math.abs(best.h - m.h) ? q : best);
+      same += Math.abs(m.r - q.r); flip += Math.abs(m.r + q.r);
+    }
+    return flip < same;
+  };
+  const glyphs = [];
+  for (const g of lines) {
+    const r = topL && g.cy > topL.y0 && lines.filter(o => o.cy < topL.y0).sort((a, b) => Math.abs(a.list.length - g.list.length) - Math.abs(b.list.length - g.list.length))[0];
+    if (r && !mirrored(g, r)) continue;
+    g.list.forEach(b => glyphs.push({ i: b.i, j: b.j, cy: g.cy }));
   }
   return st._prep = { top, topL, side, glyphs };
 }
@@ -563,7 +589,7 @@ function artMarkup(st, prefix, foot, opts = {}) {
 
 // Draw one view of one foot into an <svg>: view is "top", "side" or "all". The left foot's top view is the
 // right one mirrored (the drawings show the right shoe), with the insole lettering turned back so it still reads;
-// a drawing with a top view for each foot shows the left foot's own (its lettering, drawn mirrored, turned back too).
+// a drawing with a top view for each foot shows the left foot's own (its lettering turned back too if drawn mirrored).
 function drawView(svg, styleKey, foot, view, prefix, opts = {}) {
   const st = artOf(styleKey), pr = prep(st), pad = 3;
   opts = { ...opts, soleMap: soleOf(styleKey).map };
@@ -597,7 +623,7 @@ function renderStage() {
 
 function renderChips() {
   ["R", "L"].forEach(f => {
-    $("chips" + f).innerHTML = partsOf().map((p, i) => `<button class="chip" type="button" aria-pressed="${sel.has(f + ":" + p)}" data-k="${f}:${p}" title="${STYLES[state.style].parts[p]}">${f} ${i + 1}</button>`).join("");
+    $("chips" + f).innerHTML = partsOf().map(p => `<button class="chip" type="button" aria-pressed="${sel.has(f + ":" + p)}" data-k="${f}:${p}" title="${STYLES[state.style].parts[p]}">${partLabel(f, p, " ")}</button>`).join("");
     $("chips" + f).querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => toggle(b.dataset.k)));
   });
   $("noneHint").hidden = sel.size > 0;
@@ -941,7 +967,7 @@ async function makePicture() {
     const W = 1080, M = 80, artW = W - 2 * M, hasSide = !!prep(artOf()).side;
     const views = [await viewImage("R", "top", artW), await viewImage("L", "top", artW)];
     if (hasSide) views.push(await viewImage("L", "side", artW));
-    const tiles = [...["R", "L"].flatMap(f => parts.map((p, i) => ({ label: `${f}${i + 1}`, s: state[f][p] }))), { label: "Sole", sole: true }];
+    const tiles = [...["R", "L"].flatMap(f => parts.map(p => ({ label: partLabel(f, p), s: state[f][p] }))), { label: "Sole", sole: true }];
     if (st.lace) tiles.push({ label: "Lace", lace: true });
     if (st.buckle) tiles.push({ label: "Buckle", buckle: true });
     const per = 5, T = 150, gap = (artW - per * T) / (per - 1), rowH = T + 110;
