@@ -25,6 +25,9 @@
   --chip: #8c8c8c;
   --soft: #e4e4e4;
   --font: "Jost", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  /* Two type sizes for the whole page: --title for headings and the main buttons, --text for everything else. */
+  --title: 15px;
+  --text: 12px;
   color-scheme: light;
 }
 html { -webkit-text-size-adjust: 100%; }
@@ -43,10 +46,9 @@ header { padding: 26px 0 16px; }
 
 section { border-top: 1px solid var(--rule); padding: 16px 0 18px; }
 .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-h2 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: .02em; }
-.big-h h2, h2.big-h { font-size: 16px; }
+h2 { margin: 0; font-size: var(--title); font-weight: 500; letter-spacing: .02em; }
 h2 small { font-size: inherit; font-weight: 400; }
-.head .now { margin-left: auto; color: var(--muted); font-size: 12px; text-align: right; }
+.head .now { margin-left: auto; color: var(--muted); font-size: var(--text); text-align: right; }
 /* Open sections show ⌄, closed ones ⌃ (as drawn in the design). */
 .tog { flex: none; width: 26px; height: 26px; border: 1px solid var(--fg); border-radius: 8px; display: grid; place-items: center; }
 .tog svg { width: 11px; height: 11px; transition: transform .2s; }
@@ -54,7 +56,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 .fold[data-open="false"] .body { display: none; }
 .body { margin-top: 10px; }
 
-.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; color: #727171; font-size: 11.5px; line-height: 2; }
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; color: #727171; font-size: var(--text); line-height: 2; }
 .steps li { counter-increment: s; }
 .steps li::before { content: counter(s) ". "; }
 /* Steps 1–5 are links to their part of the page; the mini pair at the top doesn't cover what they jump to. */
@@ -64,20 +66,20 @@ h2 small { font-size: inherit; font-weight: 400; }
 #secDone, #lineBtn { scroll-margin-top: 92px; }
 
 .styles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.style-card { border: 1px solid var(--soft); border-radius: 12px; padding: 6px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; line-height: 1.35; text-align: center; }
-.style-card small { display: block; font-size: 11px; color: var(--muted); }
+.style-card { border: 1px solid var(--soft); border-radius: 12px; padding: 6px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: var(--text); line-height: 1.35; text-align: center; }
+.style-card small { display: block; font-size: var(--text); color: var(--muted); }
 .style-card svg { width: 100%; aspect-ratio: 4/3; display: block; }
 .style-card[aria-pressed="true"] { border-color: var(--chip); background: #f2f2f2; }
 
-.sz-label { margin: 10px 0 6px; font-size: 12px; color: var(--muted); }
+.sz-label { margin: 10px 0 6px; font-size: var(--text); color: var(--muted); }
 .sizes { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
-.sz { aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--chip); font-size: 12px; display: grid; place-items: center; letter-spacing: -.02em; }
+.sz { aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--chip); font-size: var(--text); display: grid; place-items: center; letter-spacing: -.02em; }
 .sz[aria-pressed="true"] { background: var(--chip); }
 
 .stage { border-top: 1px solid var(--rule); padding: 18px 0 14px; }
 .stage svg { display: block; width: 100%; height: auto; }
 .stage .top + .top { margin-top: 6px; }
-.stage .label { text-align: right; color: #898989; font-size: 11.5px; margin: 2px 4px 14px; }
+.stage .label { text-align: right; color: #898989; font-size: var(--text); margin: 2px 4px 14px; }
 .stage .label:last-child { margin-bottom: 0; }
 
 /* A small copy of the pair stays at the top while the swatches are chosen further down. */
@@ -88,22 +90,22 @@ h2 small { font-size: inherit; font-weight: 400; }
 @media (prefers-reduced-motion: reduce) { .mini, .tog svg, .sheet { transition: none; } }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 10px; }
-.chip { min-width: 46px; height: 26px; padding: 0 10px; border-radius: 99px; border: 1px solid var(--chip); font-size: 11.5px; letter-spacing: .14em; box-sizing: border-box; }
+.chip { min-width: 46px; height: 26px; padding: 0 10px; border-radius: 99px; border: 1px solid var(--chip); font-size: var(--text); letter-spacing: .14em; box-sizing: border-box; }
 .chip[aria-pressed="true"] { background: var(--chip); }
 .chip.word { letter-spacing: .01em; min-width: 46px; }
-.none-hint { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.none-hint { margin: 10px 0 0; color: var(--muted); font-size: var(--text); }
 /* 抽卡 / 重選: the whole pair at once. */
 .acts { display: flex; gap: 10px; margin-top: 12px; }
-.act { flex: 1; height: 32px; border-radius: 99px; border: 1px solid var(--fg); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; letter-spacing: .02em; }
+.act { flex: 1; height: 32px; border-radius: 99px; border: 1px solid var(--fg); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: var(--text); letter-spacing: .02em; }
 .act svg { width: 16px; height: 16px; flex: none; }
 .act:active { background: var(--chip); }
 
 .sources { display: flex; gap: 16px; margin-top: 14px; }
-.src { position: relative; width: 120px; height: 120px; border-radius: 18px; border: 1.5px solid var(--soft); box-shadow: 0 1px 4px rgba(0,0,0,.06); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-size: 19px; cursor: pointer; }
+.src { position: relative; width: 120px; height: 120px; border-radius: 18px; border: 1.5px solid var(--soft); box-shadow: 0 1px 4px rgba(0,0,0,.06); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-size: var(--text); cursor: pointer; }
 .src svg { width: 40px; height: 40px; }
 .src input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
-.mine-head { display: flex; justify-content: space-between; align-items: baseline; margin: 18px 0 10px; font-size: 16px; }
-.link { color: var(--muted); font-size: 15px; text-decoration: underline; text-underline-offset: 3px; }
+.mine-head { display: flex; justify-content: space-between; align-items: baseline; margin: 18px 0 10px; font-size: var(--text); }
+.link { color: var(--muted); font-size: var(--text); text-decoration: underline; text-underline-offset: 3px; }
 
 .sub { padding: 18px 0 4px; }
 .sub + .sub { padding-top: 6px; }
@@ -113,11 +115,12 @@ h2 small { font-size: inherit; font-weight: 400; }
 .sw[aria-pressed="true"] { outline: 2.5px solid var(--fg); outline-offset: 2.5px; }
 .sw[aria-disabled="true"] { opacity: .22; }
 .sw .x { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; background: var(--fg); color: #fff; font-size: 14px; line-height: 22px; text-align: center; }
-.empty { color: var(--muted); font-size: 14px; margin: 0; grid-column: 1 / -1; }
+.empty { color: var(--muted); font-size: var(--text); margin: 0; grid-column: 1 / -1; }
 
 .done { text-align: center; padding-top: 28px; }
-.done h3 { margin: 0 0 22px; font-size: 16px; font-weight: 500; letter-spacing: .06em; }
-.big { position: relative; width: 100%; min-height: 62px; border-radius: 14px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 16px; letter-spacing: .02em; line-height: 1.4; box-sizing: border-box; padding: 8px 56px; }
+.done h3 small { font-size: inherit; font-weight: 400; }
+.done h3 { margin: 0 0 22px; font-size: var(--title); font-weight: 500; letter-spacing: .06em; }
+.big { position: relative; width: 100%; min-height: 62px; border-radius: 14px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: var(--title); letter-spacing: .02em; line-height: 1.4; box-sizing: border-box; padding: 8px 56px; }
 .big + .big { margin-top: 14px; }
 .big svg { position: absolute; left: 36px; top: 50%; transform: translate(-50%, -50%); }
 .big.save svg { width: 28px; height: 28px; }
@@ -125,7 +128,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 .big.save { background: var(--chip); }
 .big.save[aria-busy="true"] { opacity: .6; }
 .big.line { border: 1px solid var(--chip); text-decoration: none; color: inherit; }
-@media (max-width: 339px) { .big { font-size: 15px; } }
+.big small { display: block; font-size: var(--text); color: #444; letter-spacing: .01em; }
 
 /* The swatches sit on the bottom edge of the screen, so the shoe stays in view while picking; tap the bar to open or tuck them away. */
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; max-width: 560px; margin: 0 auto; background: rgba(255,255,255,.96); border-radius: 20px 20px 0 0; box-shadow: 0 -4px 18px rgba(0,0,0,.14); transition: transform .2s, box-shadow .15s; }
@@ -133,25 +136,24 @@ h2 small { font-size: inherit; font-weight: 400; }
 .sheet.dragging { transition: none; }
 .sheet-head { position: relative; padding: 18px 20px 12px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
 .sheet.dragging .sheet-head { cursor: grabbing; }
-.sheet .sub h2 { font-size: 16px; }
 .sheet .grip { position: absolute; left: 50%; top: 7px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--soft); }
 .sheet[data-open="false"] .sheet-head { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
 .sheet-body { margin: 0; max-height: min(42vh, 400px); overflow-y: auto; overscroll-behavior: contain; padding: 0 20px calc(16px + env(safe-area-inset-bottom, 0px)); }
-.src-head { margin: 0; font-size: 16px; font-weight: 500; letter-spacing: .02em; }
+.src-head { margin: 0; font-size: var(--title); font-weight: 500; letter-spacing: .02em; }
 .src-head small { font-size: inherit; font-weight: 400; }
 .sheet .sources { margin-top: 10px; }
 .sheet .src-fold .head { cursor: pointer; }
-.sheet .src { width: 104px; height: 88px; gap: 4px; font-size: 16px; border-radius: 16px; }
+.sheet .src { width: 104px; height: 88px; gap: 4px; font-size: var(--text); border-radius: 16px; }
 .sheet .src svg { width: 32px; height: 32px; }
 
 /* The finished picture, with 下載圖片 and 關閉. */
 .result { position: fixed; inset: 0; z-index: 30; background: rgba(255,255,255,.98); display: flex; flex-direction: column; align-items: center; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); gap: 12px; box-sizing: border-box; }
 .result[hidden] { display: none; }
 .result img { flex: 1; min-height: 0; max-width: 100%; object-fit: contain; box-shadow: 0 2px 12px rgba(0,0,0,.15); -webkit-touch-callout: default; }
-.result p { margin: 0; color: var(--muted); font-size: 15px; text-align: center; }
+.result p { margin: 0; color: var(--muted); font-size: var(--text); text-align: center; }
 .result p.warn { color: var(--fg); font-weight: 500; }
 .result .row { display: flex; gap: 12px; }
-.result .row > * { padding: 12px 22px; border-radius: 99px; border: 2px solid var(--chip); font-size: 16px; text-decoration: none; color: inherit; }
+.result .row > * { padding: 12px 22px; border-radius: 99px; border: 1px solid var(--chip); font-size: var(--title); text-decoration: none; color: inherit; }
 
 /* In-app camera: live view with a 30 cm square guide and a cm ruler on its edges; only the square is kept. */
 .cam { position: fixed; inset: 0; z-index: 20; background: #000; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -159,13 +161,13 @@ h2 small { font-size: inherit; font-weight: 400; }
 .cam img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; }
 .cam .crop-only, .cam.crop .cam-only { display: none; }
 .cam.crop .crop-only { display: block; }
-.use { justify-self: center; padding: 12px 26px; border-radius: 99px; background: #fff; color: #111; font-weight: 500; font-size: 16px; }
+.use { justify-self: center; padding: 12px 26px; border-radius: 99px; background: #fff; color: #111; font-weight: 500; font-size: var(--title); }
 .cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .cam-frame { position: absolute; left: 50%; top: 44%; width: min(84vw, 58vh); aspect-ratio: 1; transform: translate(-50%, -50%); box-shadow: 0 0 0 100vmax rgba(0,0,0,.5); border: 2px solid #fff; }
 .cam-frame svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.cam-hint { position: absolute; left: 16px; right: 16px; top: calc(14px + env(safe-area-inset-top, 0px)); margin: 0; text-align: center; color: #fff; font-size: 15px; line-height: 1.45; text-shadow: 0 1px 3px #000; }
-.cam-hint small { display: block; font-size: 12px; opacity: .85; }
-.cam-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 24px calc(22px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; color: #fff; font-size: 14px; }
+.cam-hint { position: absolute; left: 16px; right: 16px; top: calc(14px + env(safe-area-inset-top, 0px)); margin: 0; text-align: center; color: #fff; font-size: var(--title); line-height: 1.45; text-shadow: 0 1px 3px #000; }
+.cam-hint small { display: block; font-size: var(--text); opacity: .85; }
+.cam-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 24px calc(22px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; color: #fff; font-size: var(--text); }
 .cam-bar > :first-child { justify-self: start; } .cam-bar label { justify-self: end; position: relative; }
 .cam-bar input { position: absolute; inset: 0; opacity: 0; width: 100%; }
 .shutter { width: 70px; height: 70px; border-radius: 50%; background: #fff; border: 5px solid rgba(255,255,255,.4); background-clip: padding-box; }
@@ -182,17 +184,17 @@ h2 small { font-size: inherit; font-weight: 400; }
   <section class="fold" data-fold="how">
     <div class="head"><h2>流程說明 <small>· HOW IT WORKS</small></h2><button class="tog" type="button" aria-label="展開或收起"></button></div>
     <ol class="steps body">
-      <li><a href="#secStyle">選擇鞋款 / SELECT STYLE</a></li><li><a href="#secSize">選擇尺寸 / SELECT SIZE</a></li><li><a href="#stage">搭配顏色 / MATCH COLORS</a></li><li><a href="#secDone">儲存設計 / SAVE DESIGN</a></li><li><a href="#lineBtn">傳送至Line / SEND VIA LINE</a></li><li>線上報價＆付款 / ONLINE QUOTE &amp; PAYMENT</li><li>40個工作天寄出 / SHIPS WITHIN 40 BUSINESS DAYS</li>
+      <li><a href="#secStyle">選擇鞋款 / Choose a style</a></li><li><a href="#secSize">選擇尺寸 / Choose your size</a></li><li><a href="#stage">搭配顏色 / Match colors</a></li><li><a href="#secDone">儲存設計 / Save your design</a></li><li><a href="#lineBtn">傳送至 LINE / Send it on LINE</a></li><li>線上報價＆付款 / Online quote &amp; payment</li><li>40 個工作天寄出 / Ships within 40 business days</li>
     </ol>
   </section>
 
   <section class="fold" data-fold="style" id="secStyle">
-    <div class="head"><h2>款式 <small>· Style</small></h2><span class="now" id="styleNow"></span><button class="tog" type="button" aria-label="展開或收起"></button></div>
+    <div class="head"><h2>款式 <small>· STYLE</small></h2><span class="now" id="styleNow"></span><button class="tog" type="button" aria-label="展開或收起"></button></div>
     <div class="styles body" id="styles"></div>
   </section>
 
   <section class="fold" data-fold="size" id="secSize">
-    <div class="head"><h2>尺寸 <small>· Size</small></h2><span class="now" id="sizeNow"></span><button class="tog" type="button" aria-label="展開或收起"></button></div>
+    <div class="head"><h2>尺寸 <small>· SIZE</small></h2><span class="now" id="sizeNow"></span><button class="tog" type="button" aria-label="展開或收起"></button></div>
     <div class="body" id="sizes"></div>
   </section>
 
@@ -208,7 +210,7 @@ h2 small { font-size: inherit; font-weight: 400; }
     <h2>鞋面部位 <small>· SELECT PART</small></h2>
     <div class="chips" id="chipsR"></div>
     <div class="chips" id="chipsL"></div>
-    <p class="none-hint" id="noneHint" hidden>先點選上面的 R / L 部位，再選顏色。</p>
+    <p class="none-hint" id="noneHint" hidden>先點選上面的 R / L 部位，再選顏色。<br>Tap a part above (R / L), then pick a color.</p>
     <div class="acts">
       <button class="act" type="button" id="shuffle"><svg viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round"><rect x="2.5" y="2.5" width="15" height="15" rx="3.5"/><circle cx="6.5" cy="6.5" r="1.1" fill="#111" stroke="none"/><circle cx="13.5" cy="6.5" r="1.1" fill="#111" stroke="none"/><circle cx="10" cy="10" r="1.1" fill="#111" stroke="none"/><circle cx="6.5" cy="13.5" r="1.1" fill="#111" stroke="none"/><circle cx="13.5" cy="13.5" r="1.1" fill="#111" stroke="none"/></svg>抽卡 Shuffle</button>
       <button class="act" type="button" id="resetAll"><svg viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a6 6 0 1 0 1.8-4.3"/><path d="M4 3.5v3.2h3.2"/></svg>重選 Reset</button>
@@ -216,70 +218,70 @@ h2 small { font-size: inherit; font-weight: 400; }
   </section>
 
   <section>
-    <h2 class="big-h">鞋底顏色 <small>· SELECT SOLE</small></h2>
+    <h2>鞋底 <small>· SOLE</small></h2>
     <div class="chips" id="soles"></div>
   </section>
 
 
   <section id="laceSec" hidden>
-    <h2 class="big-h">選擇鞋帶 <small>· Shoelace</small></h2>
+    <h2>鞋帶 <small>· SHOELACES</small></h2>
     <div class="chips" id="laces"></div>
   </section>
 
   <section id="buckleSec" hidden>
-    <h2 class="big-h">選擇釦子 <small>· Buckle</small></h2>
+    <h2>釦子 <small>· BUCKLE</small></h2>
     <div class="chips" id="buckles"></div>
   </section>
 
   <section class="done" id="secDone">
-    <h3>完成你的設計</h3>
-    <button class="big save" type="button" id="saveImg"><svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="#111" stroke-width="2.6"><path d="M23 6v24M13 21l10 10 10-10"/><path d="M4 30v10h38V30"/></svg><span>儲存圖片至手機相簿</span></button>
-    <a class="big line" id="lineBtn" href="#" target="_blank" rel="noopener"><svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 6C16.5 6 4 15.6 4 27.5c0 10 8.8 18.4 20.8 20.8l2.2 9.7 9-9.3C49.7 47.2 60 38.3 60 27.5 60 15.6 47.5 6 32 6z" fill="#111"/><text x="32" y="33" fill="#fff" font-family="Arial, sans-serif" font-weight="700" font-size="14" text-anchor="middle">LINE</text></svg><span>加入愛花製作所&nbsp;LINE<br>傳送你的設計給我們</span></a>
+    <h3>完成你的設計 <small>· FINISHED</small></h3>
+    <button class="big save" type="button" id="saveImg"><svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="#111" stroke-width="2.6"><path d="M23 6v24M13 21l10 10 10-10"/><path d="M4 30v10h38V30"/></svg><span>儲存圖片至手機相簿<small>Save the picture to your phone</small></span></button>
+    <a class="big line" id="lineBtn" href="#" target="_blank" rel="noopener"><svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 6C16.5 6 4 15.6 4 27.5c0 10 8.8 18.4 20.8 20.8l2.2 9.7 9-9.3C49.7 47.2 60 38.3 60 27.5 60 15.6 47.5 6 32 6z" fill="#111"/><text x="32" y="33" fill="#fff" font-family="Arial, sans-serif" font-weight="700" font-size="14" text-anchor="middle">LINE</text></svg><span>加入愛花製作所&nbsp;LINE<br>傳送你的設計給我們<small>Add us on LINE and send us your design</small></span></a>
   </section>
 </div>
 
 <div class="sheet fold" id="sheet" data-fold="sheet">
-  <div class="head sheet-head"><span class="grip" aria-hidden="true"></span><h2 class="big-h">色卡 <small>· SWATCHES</small></h2></div>
+  <div class="head sheet-head"><span class="grip" aria-hidden="true"></span><h2>色卡 <small>· SWATCHES</small></h2></div>
   <div class="body sheet-body">
     <div class="fold src-fold" data-fold="source">
       <div class="head"><h3 class="src-head">材質來源 <small>· SELECT SOURCE</small></h3><button class="tog" type="button" aria-label="展開或收起材質來源"></button></div>
       <div class="sources body">
-        <label class="src"><svg viewBox="0 0 40 40" fill="none" stroke="#111" stroke-width="2.6" stroke-linejoin="round"><path d="M4 12h8l3-5h10l3 5h8v22H4z"/><circle cx="20" cy="22" r="7"/><circle cx="31" cy="16" r=".6" fill="#111"/></svg>camera<input id="snapCam" type="file" accept="image/*" capture="environment"></label>
-        <label class="src"><svg viewBox="0 0 40 40" fill="none" stroke="#111" stroke-width="2.6" stroke-linejoin="round"><rect x="5" y="6" width="30" height="28" rx="1"/><path d="M5 30l9-9 7 6 5-4 9 8"/><circle cx="14" cy="14" r="2" fill="#111"/></svg>photo<input id="snapAlbum" type="file" accept="image/*"></label>
+        <label class="src"><svg viewBox="0 0 40 40" fill="none" stroke="#111" stroke-width="2.6" stroke-linejoin="round"><path d="M4 12h8l3-5h10l3 5h8v22H4z"/><circle cx="20" cy="22" r="7"/><circle cx="31" cy="16" r=".6" fill="#111"/></svg>相機 Camera<input id="snapCam" type="file" accept="image/*" capture="environment"></label>
+        <label class="src"><svg viewBox="0 0 40 40" fill="none" stroke="#111" stroke-width="2.6" stroke-linejoin="round"><rect x="5" y="6" width="30" height="28" rx="1"/><path d="M5 30l9-9 7 6 5-4 9 8"/><circle cx="14" cy="14" r="2" fill="#111"/></svg>相簿 Photos<input id="snapAlbum" type="file" accept="image/*"></label>
       </div>
     </div>
       <div id="mineWrap" hidden>
-        <div class="mine-head"><span>我的色卡</span><button class="link" type="button" id="editMine">編輯</button></div>
+        <div class="mine-head"><span>我的色卡 My swatches</span><button class="link" type="button" id="editMine">編輯 Edit</button></div>
         <div class="swatches" id="mine"></div>
       </div>
 
       <div class="fold sub" data-fold="leather">
-        <div class="head"><h2>皮革 <small>· Leather</small></h2><button class="tog" type="button" aria-label="展開或收起"></button></div>
+        <div class="head"><h2>皮革 <small>· LEATHER</small></h2><button class="tog" type="button" aria-label="展開或收起"></button></div>
         <div class="swatches body" id="leather"></div>
       </div>
       <div class="fold sub" data-fold="fabric">
-        <div class="head"><h2>布料 <small>· Fabric</small></h2><button class="tog" type="button" aria-label="展開或收起"></button></div>
+        <div class="head"><h2>布料 <small>· FABRIC</small></h2><button class="tog" type="button" aria-label="展開或收起"></button></div>
         <div class="swatches body" id="fabric"></div>
       </div>
   </div>
 </div>
 <div class="result" id="result" hidden>
-  <p id="resultHint">長按圖片可存到手機相簿</p>
+  <p id="resultHint">長按圖片可存到手機相簿 · Press and hold the picture to save it</p>
   <img id="resultImg" alt="你的設計">
-  <div class="row"><a id="resultDl" download="aika-play.jpg" href="#">下載圖片</a><button type="button" id="resultClose">關閉</button></div>
+  <div class="row"><a id="resultDl" download="aika-play.jpg" href="#">下載圖片 Download</a><button type="button" id="resultClose">關閉 Close</button></div>
 </div>
 
 <div class="cam" id="cam" hidden>
   <video id="camVideo" class="cam-only" playsinline muted autoplay></video>
   <img id="cropImg" class="crop-only" alt="" draggable="false">
   <div class="cam-frame" id="camFrame"><svg viewBox="0 0 300 300" aria-hidden="true" id="camRuler"></svg></div>
-  <p class="cam-hint cam-only">把 30 × 30 cm 的皮料或布料放滿框內<small>框邊的刻度是公分，可以在旁邊放一把尺對齊</small></p>
-  <p class="cam-hint crop-only">拖曳、雙指縮放照片，讓 30 × 30 cm 放滿框內<small>框邊的刻度是公分</small></p>
+  <p class="cam-hint cam-only">把 30 × 30 cm 的皮料或布料放滿框內<br>Fill the frame with 30 × 30 cm of leather or fabric<small>框邊的刻度是公分，可以在旁邊放一把尺對齊<br>The marks on the frame are centimeters; a ruler alongside helps</small></p>
+  <p class="cam-hint crop-only">拖曳、雙指縮放照片，讓 30 × 30 cm 放滿框內<br>Drag and pinch so 30 × 30 cm fills the frame<small>框邊的刻度是公分 · The marks are centimeters</small></p>
   <div class="cam-bar">
-    <button type="button" id="camCancel">取消</button>
+    <button type="button" id="camCancel">取消 Cancel</button>
     <button type="button" class="shutter cam-only" id="camShot" aria-label="拍照"></button>
-    <button type="button" class="use crop-only" id="cropUse">使用</button>
-    <label class="cam-only">系統相機<input id="camNative" type="file" accept="image/*" capture="environment"></label>
+    <button type="button" class="use crop-only" id="cropUse">使用 Use</button>
+    <label class="cam-only">系統相機 Phone camera<input id="camNative" type="file" accept="image/*" capture="environment"></label>
     <span class="crop-only"></span>
   </div>
 </div>
@@ -311,7 +313,7 @@ const buckleDef = (id, name) => { const [a, b, c] = BUCKLES[name] || BUCKLES.Gol
   return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="9" y2="9" spreadMethod="reflect"><stop offset="0" stop-color="${a}"/><stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></linearGradient>`; };
 const SIZES = { women: ["34.5","35","35.5","36","36.5","37","37.5","38","38.5","39","39.5","40","40.5","41","41.5","42"],
                 men: ["38.5","39","39.5","40","40.5","41","41.5","42","42.5","43","43.5","44","44.5","45"] };
-const SIZE_ZH = { women: "女款", men: "男款" };
+const SIZE_ZH = { women: "女款 Women", men: "男款 Men" };
 
 // The shop's own demo prints (from the project's "pattern" folder).
 const PRINTS = [
@@ -342,7 +344,7 @@ const isHw = (st, p) => p === st.lace || p === st.buckle;
 const partsOf = (k = state.style) => Object.keys(STYLES[k].parts).filter(p => !isHw(STYLES[k], p));
 // A part's name on its chip and in the saved picture: R 1, R 2 … numbered without the heel, which is called 高跟.
 const isHeel = (p, k = state.style) => /^\s*(heel|高跟)\s*$/i.test(STYLES[k].parts[p] || "");
-const partLabel = (f, p, gap = "", k = state.style) => f + gap + (isHeel(p, k) ? "高跟" : partsOf(k).filter(q => !isHeel(q, k)).indexOf(p) + 1);
+const partLabel = (f, p, gap = "", k = state.style) => f + gap + (isHeel(p, k) ? "高跟 Heel" : partsOf(k).filter(q => !isHeel(q, k)).indexOf(p) + 1);
 function toBlobUrl(dataUrl) {
   try {
     const [head, b64] = dataUrl.split(","), bin = atob(b64), bytes = new Uint8Array(bin.length);
@@ -692,11 +694,11 @@ function renderSwatches() {
   $("mineWrap").hidden = !mine.length;
   if (!mine.length) editing = false;
   $("mine").innerHTML = mine.map(it => tile(it, editing)).join("");
-  $("editMine").textContent = editing ? "完成" : "編輯";
+  $("editMine").textContent = editing ? "完成 Done" : "編輯 Edit";
   const leather = [...SHOP.filter(x => x.kind === "leather").map(x => "print:" + x.key), ...COLOURS.map(c => c[1])];
   const fabric = [...SHOP.filter(x => x.kind !== "leather"), ...PRINTS].map(x => "print:" + x.key);
   $("leather").innerHTML = leather.map(it => tile(it)).join("");
-  $("fabric").innerHTML = fabric.map(it => tile(it)).join("") || `<p class="empty">還沒有布料色卡</p>`;
+  $("fabric").innerHTML = fabric.map(it => tile(it)).join("") || `<p class="empty">還沒有布料色卡 · No fabric swatches yet</p>`;
   document.querySelectorAll(".sw[data-it]").forEach(b => b.addEventListener("click", () => {
     const it = b.dataset.it;
     if (editing && b.closest("#mine")) return removePhoto(it.slice(6));
@@ -716,6 +718,9 @@ function pick(it) {
   save(); renderStage(); renderSwatches(); renderStyles();
 }
 
+// Sole, lace and buckle choices shown in both languages (the stored name stays as it is).
+const NAME_ZH = { Beige: "米色", Coffee: "咖啡", Black: "黑", White: "白", Natural: "原色", Gold: "金", Silver: "銀" }, NAME_EN = { "厚底": "Flatform" };
+const biName = n => /[\u4e00-\u9fff]/.test(n) ? (NAME_EN[n] ? `${n} ${NAME_EN[n]}` : n) : (NAME_ZH[n] ? `${NAME_ZH[n]} ${n}` : n);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 // A bilingual name ("牛津鞋 / Oxford") shows on two lines: Chinese, then English.
 const nameHtml = n => { const [a, b] = String(n).split(/\s+\/\s+/); return b ? `${esc(a)}<small>${esc(b)}</small>` : esc(n); };
@@ -739,7 +744,7 @@ function renderSizes() {
   if (!sizeOk(state.size)) { state.size = null; save(); }
   const z = state.size;
   $("sizeNow").textContent = z ? `EU ${z.v} ${SIZE_ZH[z.g]}` : "";
-  $("sizes").innerHTML = Object.entries(sizesFor()).map(([g, list]) => `<div class="sz-label">${g}</div><div class="sizes">` +
+  $("sizes").innerHTML = Object.entries(sizesFor()).map(([g, list]) => `<div class="sz-label">${SIZE_ZH[g] || g}</div><div class="sizes">` +
     list.map(v => `<button class="sz" type="button" aria-pressed="${!!z && z.g === g && z.v === v}" data-g="${g}" data-v="${v}">${v}</button>`).join("") + `</div>`).join("");
   $("sizes").querySelectorAll(".sz").forEach(b => b.addEventListener("click", () => {
     const { g, v } = b.dataset;
@@ -749,7 +754,7 @@ function renderSizes() {
 
 function renderOptions() {
   const row = (id, names, cur, set) => {
-    $(id).innerHTML = names.map(n => `<button class="chip word" type="button" aria-pressed="${n === cur}" data-n="${n}">${n}</button>`).join("");
+    $(id).innerHTML = names.map(n => `<button class="chip word" type="button" aria-pressed="${n === cur}" data-n="${n}">${biName(n)}</button>`).join("");
     $(id).querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => { set(b.dataset.n); save(); renderOptions(); renderStage(); renderStyles(); }));
   };
   row("soles", solesOf().map(s => s.name), soleOf().name, n => state.sole = n);
@@ -999,9 +1004,9 @@ async function makePicture() {
     const views = [await viewImage("R", "top", artW), await viewImage("L", "top", artW)];
     if (hasSide) views.push(await viewImage("L", "side", artW));
     // One row for the right foot, one for the left, one for the rest (sole, laces, buckle).
-    const rest = [{ label: "Sole", sole: true }];
-    if (st.lace) rest.push({ label: "Lace", lace: true });
-    if (st.buckle) rest.push({ label: "Buckle", buckle: true });
+    const rest = [{ label: "鞋底 Sole", sole: true }];
+    if (st.lace) rest.push({ label: "鞋帶 Lace", lace: true });
+    if (st.buckle) rest.push({ label: "釦子 Buckle", buckle: true });
     const rows = [...["R", "L"].map(f => parts.map(p => ({ label: partLabel(f, p), s: state[f][p] }))), rest];
     const per = Math.max(5, ...rows.map(r => r.length)), T = Math.min(150, Math.floor((artW - (per - 1) * 24) / per));
     const gap = (artW - per * T) / (per - 1), k = T / 150, rowH = T + 110 * k + 10;
@@ -1016,9 +1021,9 @@ async function makePicture() {
     y += 40;
     const font = (px, w = 400) => `${w} ${px}px Jost, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif`;
     const z = state.size, d = new Date(), date = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-    [["尺寸", z ? `EU ${z.v}  ${SIZE_ZH[z.g]}` : "未選"], ["日期", date], ["款式", st.name]].forEach(([k, v], i) => {
+    [["尺寸 Size", z ? `EU ${z.v}  ${SIZE_ZH[z.g]}` : "未選 Not chosen"], ["日期 Date", date], ["款式 Style", st.name]].forEach(([k, v], i) => {
       ctx.fillStyle = "#777"; ctx.font = font(40); ctx.fillText(k, M + 10, y + 40 + i * 58);
-      ctx.fillStyle = "#333"; ctx.font = font(42); ctx.fillText(v, M + 170, y + 40 + i * 58);
+      ctx.fillStyle = "#333"; ctx.font = font(42); ctx.fillText(v, M + 290, y + 40 + i * 58);
     });
     y += 3 * 58 + 50;
     const imgs = {};
@@ -1041,7 +1046,7 @@ async function makePicture() {
       ctx.textAlign = "center"; ctx.fillStyle = "#333";
       let px = Math.round(40 * k); ctx.font = font(px, 500); while (ctx.measureText(t.label).width > T + gap - 8 && px > 18) ctx.font = font(--px, 500);
       ctx.fillText(t.label, x + T / 2, ty + T + 50 * k);
-      const code = t.sole ? soleOf().name : t.lace ? state.lace : t.buckle ? (BUCKLES[state.buckle] ? state.buckle : "Gold") : codeOf(t.s);
+      const code = t.sole ? biName(soleOf().name) : t.lace ? biName(state.lace) : t.buckle ? biName(BUCKLES[state.buckle] ? state.buckle : "Gold") : codeOf(t.s);
       px = Math.round(32 * k); ctx.font = font(px); while (ctx.measureText(code).width > T + gap - 8 && px > 16) ctx.font = font(--px);
       ctx.fillStyle = "#111"; ctx.fillText(code, x + T / 2, ty + T + 92 * k);
       ctx.textAlign = "left";
@@ -1055,7 +1060,7 @@ async function makePicture() {
 
 // Hand the picture to the phone's share sheet (where 儲存影像 puts it in the album); otherwise show it to long-press or download.
 let lastUrl = null, lastFile = null;
-const HINT = "長按圖片可存到手機相簿";
+const HINT = "長按圖片可存到手機相簿 · Press and hold the picture to save it";
 async function showResult(file) {
   if (lastUrl) URL.revokeObjectURL(lastUrl);
   lastUrl = URL.createObjectURL(file); lastFile = file;
@@ -1072,7 +1077,7 @@ $("resultDl").addEventListener("click", async e => {
   if (!IOS || !lastFile) return;
   e.preventDefault();
   if (await sharePicture(lastFile)) return;
-  $("resultHint").textContent = "這個 App 裡不能直接下載：請長按圖片，選「加入照片」或「儲存影像」；也可以用 Safari 開啟這個網頁。";
+  $("resultHint").textContent = "這個 App 裡不能直接下載：請長按圖片，選「加入照片」或「儲存影像」；也可以用 Safari 開啟這個網頁。 This app can't download it: press and hold the picture and choose Save Image, or open this page in Safari.";
   $("resultHint").className = "warn";
 });
 async function sharePicture(file) {
