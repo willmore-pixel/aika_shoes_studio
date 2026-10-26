@@ -335,6 +335,9 @@ let STYLES = BUILT_IN;
 const PARTS = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const solesOf = (k = state.style) => STYLES[k].soles || DEFAULT_SOLES;
 const soleOf = (k = state.style) => solesOf(k).find(s => s.name === state.sole) || solesOf(k)[0];
+// A style may offer only some lace colours (st.laces, e.g. ["Black", "White"]); otherwise all of them.
+const lacesOf = (st = STYLES[state.style]) => { const l = (st.laces || []).filter(n => LACES[n]); return l.length ? l : Object.keys(LACES); };
+const laceOf = (st = STYLES[state.style]) => lacesOf(st).includes(state.lace) ? state.lace : lacesOf(st)[0];
 // The drawing as shown: the style's own, or the one its chosen sole brings.
 function artOf(k = state.style) {
   const so = soleOf(k);
@@ -601,7 +604,7 @@ async function traceSeen(st, i) {
 function artMarkup(st, prefix, foot, opts = {}) {
   const parts = state[foot], [bx, by, bw, bh] = st.bb, chosen = opts.chosen || new Set();
   const shape = it => `d="${it.d}"${it.t ? ` transform="${it.t}"` : ""}`;
-  const fillFor = p => p === st.lace ? LACES[state.lace] : p === st.buckle ? `url(#${prefix}-buckle)` : parts[p].p && PRINT[parts[p].p] ? `url(#${prefix}-${p})` : parts[p].c || "#FFFFFF";
+  const fillFor = p => p === st.lace ? LACES[laceOf(st)] : p === st.buckle ? `url(#${prefix}-buckle)` : parts[p].p && PRINT[parts[p].p] ? `url(#${prefix}-${p})` : parts[p].c || "#FFFFFF";
   const soleMap = opts.soleMap || {};
   let defs = Object.keys(st.parts).filter(p => !isHw(st, p) && parts[p].p && PRINT[parts[p].p]).map(p => patternDef(`${prefix}-${p}`, parts[p].p, st, p, opts.flipped)).join("") +
     (st.buckle ? buckleDef(`${prefix}-buckle`, state.buckle) : "");
@@ -759,11 +762,12 @@ function renderStyles() {
   box.querySelectorAll("svg[data-s]").forEach(svg => drawView(svg, svg.dataset.s, "L", "all", "th-" + svg.dataset.s));
 }
 
-// A style can be made in only some sizes (st.sizes = { women: [from, to], men: [from, to] }, set on the upload page).
+// A style can be made in only some sizes (st.sizes = { women: [from, to], men: [from, to] }, st.whole, set on the upload page).
 function sizesFor(k = state.style) {
   const r = STYLES[k].sizes;
-  if (!r) return SIZES;
-  return Object.fromEntries(Object.entries(r).filter(([g]) => SIZES[g]).map(([g, [a, b]]) => [g, SIZES[g].slice(SIZES[g].indexOf(a), SIZES[g].indexOf(b) + 1)]));
+  const out = !r ? SIZES : Object.fromEntries(Object.entries(r).filter(([g]) => SIZES[g]).map(([g, [a, b]]) => [g, SIZES[g].slice(SIZES[g].indexOf(a), SIZES[g].indexOf(b) + 1)]));
+  // st.whole: made in whole sizes only (no half sizes).
+  return STYLES[k].whole ? Object.fromEntries(Object.entries(out).map(([g, l]) => [g, l.filter(v => !v.includes("."))])) : out;
 }
 const sizeOk = z => !z || (sizesFor()[z.g] || []).includes(z.v);
 function renderSizes() {
@@ -785,13 +789,13 @@ function renderOptions() {
   };
   row("soles", solesOf().map(s => s.name), soleOf().name, n => state.sole = n);
   $("laceSec").hidden = !STYLES[state.style].lace;
-  row("laces", Object.keys(LACES), state.lace, n => state.lace = n);
+  row("laces", lacesOf(), laceOf(), n => state.lace = n);
   $("buckleSec").hidden = !STYLES[state.style].buckle;
   row("buckles", Object.keys(BUCKLES), BUCKLES[state.buckle] ? state.buckle : "Gold", n => state.buckle = n);
 }
 
 // 抽卡: every part of both shoes gets a random swatch (colour, leather or fabric), and laces and buckle if the style has them.
-// The sole stays as chosen. 重選: every part back to white, first sole, beige laces, gold buckle.
+// The sole stays as chosen. 重選: every part back to white, first sole, first lace colour (beige), gold buckle.
 $("shuffle").addEventListener("click", () => {
   const shown = k => SAMPLES || !PRINTS.some(x => x.key === k);
   const pool = [...(SAMPLES ? COLOURS.map(c => c[1]) : []), ...Object.keys(PRINT).filter(shown).map(k => "print:" + k)], any = a => a[Math.floor(Math.random() * a.length)];
@@ -800,12 +804,12 @@ $("shuffle").addEventListener("click", () => {
     if (!it) return;
     state[f][p] = isPrint(it) ? { c: null, p: it.slice(6) } : { c: it, p: null };
   }));
-  if (STYLES[state.style].lace) state.lace = any(Object.keys(LACES));
+  if (STYLES[state.style].lace) state.lace = any(lacesOf());
   if (STYLES[state.style].buckle) state.buckle = any(Object.keys(BUCKLES));
   save(); renderAll();
 });
 $("resetAll").addEventListener("click", () => {
-  state.L = blank(); state.R = blank(); state.sole = solesOf()[0].name; state.lace = "Beige"; state.buckle = "Gold";
+  state.L = blank(); state.R = blank(); state.sole = solesOf()[0].name; state.lace = lacesOf()[0]; state.buckle = "Gold";
   save(); renderAll();
 });
 
@@ -1062,7 +1066,7 @@ async function makePicture() {
       if (t.sole) {
         const t = soleTile(soleOf()), bands = [[0, .45, "#efe9e2"], [.45, .53, t[0]], [.53, .8, t[1]], [.8, 1, t[2]]];
         bands.forEach(([a, b, f]) => { ctx.fillStyle = f; ctx.fillRect(x, ty + a * T, T, (b - a) * T + 1); });
-      } else if (t.lace) { ctx.fillStyle = LACES[state.lace]; ctx.fillRect(x, ty, T, T); }
+      } else if (t.lace) { ctx.fillStyle = LACES[laceOf()]; ctx.fillRect(x, ty, T, T); }
       else if (t.buckle) {
         const [a, b, c] = BUCKLES[state.buckle] || BUCKLES.Gold, g = ctx.createLinearGradient(x, ty, x + T, ty + T);
         g.addColorStop(0, a); g.addColorStop(.55, b); g.addColorStop(1, c); ctx.fillStyle = g; ctx.fillRect(x, ty, T, T);
@@ -1074,7 +1078,7 @@ async function makePicture() {
       ctx.textAlign = "center"; ctx.fillStyle = "#333";
       let px = Math.round(40 * k); ctx.font = font(px, 500); while (ctx.measureText(t.label).width > T + gap - 8 && px > 18) ctx.font = font(--px, 500);
       ctx.fillText(t.label, x + T / 2, ty + T + 50 * k);
-      const code = t.sole ? biName(soleOf().name) : t.lace ? biName(state.lace) : t.buckle ? biName(BUCKLES[state.buckle] ? state.buckle : "Gold") : codeOf(t.s);
+      const code = t.sole ? biName(soleOf().name) : t.lace ? biName(laceOf()) : t.buckle ? biName(BUCKLES[state.buckle] ? state.buckle : "Gold") : codeOf(t.s);
       px = Math.round(32 * k); ctx.font = font(px); while (ctx.measureText(code).width > T + gap - 8 && px > 16) ctx.font = font(--px);
       ctx.fillStyle = "#111"; ctx.fillText(code, x + T / 2, ty + T + 92 * k);
       ctx.textAlign = "left";
