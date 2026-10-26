@@ -68,7 +68,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 .styles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .style-card { border: 1px solid var(--soft); border-radius: 12px; padding: 6px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: var(--text); line-height: 1.35; text-align: center; }
 .style-card small { display: block; font-size: var(--text); color: var(--muted); }
-.style-card svg { width: 100%; aspect-ratio: 4/3; display: block; }
+.style-card svg, .style-card img { width: 100%; aspect-ratio: 4/3; display: block; object-fit: contain; }
 .style-card[aria-pressed="true"] { border-color: var(--chip); background: #f2f2f2; }
 
 .sz-label { margin: 10px 0 6px; font-size: var(--text); color: var(--muted); }
@@ -339,7 +339,7 @@ const soleOf = (k = state.style) => solesOf(k).find(s => s.name === state.sole) 
 function artOf(k = state.style) {
   const so = soleOf(k);
   // A sole with its own drawing measures and traces that drawing afresh (_prep, _seen), never the base drawing's.
-  return so.style ? (so._st ||= { ...STYLES[k], ...so.style, soles: undefined, _prep: undefined, _seen: undefined }) : STYLES[k];
+  return so.style ? (so._st ||= { ...STYLES[k], ...so.style, seen: so.style.seen, soles: undefined, _prep: undefined, _seen: undefined }) : STYLES[k];
 }
 const soleTile = so => so.tile || SOLE_SRC.map(h => (so.map || {})[h] || h);
 // A style may name one of its parts as the laces (st.lace) or the buckle (st.buckle); those take the shoelace
@@ -520,8 +520,11 @@ function prep(st) {
 
 // A chosen part's dashed outline follows the edge of what can be seen of it: its drawn shape minus everything
 // painted over it (other parts, the sole, the insole), except the laces, which lie on top of the outline instead. Found once per drawing by painting that onto a canvas and tracing its edge.
+// The upload page does this once and keeps the result in the style (st.seen, by item), so phones don't have to;
+// styles uploaded before that are traced here.
 const TRACE_PX = 3;  // canvas pixels per drawing unit
 function seenOutline(st, i) {
+  if (st.seen && i in st.seen) return st.seen[i];
   const c = (st._seen ||= {});
   if (!(i in c)) { c[i] = null; traceSeen(st, i).then(d => { c[i] = d; renderStage(); }, () => {}); }
   return c[i];
@@ -742,11 +745,18 @@ const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 const nameHtml = n => { const [a, b] = String(n).split(/\s+\/\s+/); return b ? `${esc(a)}<small>${esc(b)}</small>` : esc(n); };
 function renderStyles() {
   $("styleNow").textContent = STYLES[state.style].name;
-  $("styles").innerHTML = Object.entries(STYLES).map(([k, s]) => `<button class="style-card" type="button" aria-pressed="${k === state.style}" data-s="${k}"><svg data-s="${k}"></svg><span>${nameHtml(s.name)}</span></button>`).join("");
-  $("styles").querySelectorAll("svg[data-s]").forEach(svg => drawView(svg, svg.dataset.s, "L", "all", "th-" + svg.dataset.s));
-  $("styles").querySelectorAll("button[data-s]").forEach(b => b.addEventListener("click", () => {
-    state.style = b.dataset.s; sel = firstSel(); save(); renderAll();
-  }));
+  // A style's small picture (st.thumb, made by the upload page) shows as an image; drawing all of them live is slow on
+  // phones. The cards are built once per list of styles; after that only the chosen one changes.
+  const box = $("styles"), keys = Object.keys(STYLES).join();
+  if (box.dataset.keys !== keys) {
+    box.dataset.keys = keys;
+    box.innerHTML = Object.entries(STYLES).map(([k, s]) => `<button class="style-card" type="button" data-s="${k}">${s.thumb ? `<img src="${s.thumb}" alt="">` : `<svg data-s="${k}"></svg>`}<span>${nameHtml(s.name)}</span></button>`).join("");
+    box.querySelectorAll("button[data-s]").forEach(b => b.addEventListener("click", () => {
+      state.style = b.dataset.s; sel = firstSel(); save(); renderAll();
+    }));
+  }
+  box.querySelectorAll("button[data-s]").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === state.style));
+  box.querySelectorAll("svg[data-s]").forEach(svg => drawView(svg, svg.dataset.s, "L", "all", "th-" + svg.dataset.s));
 }
 
 // A style can be made in only some sizes (st.sizes = { women: [from, to], men: [from, to] }, set on the upload page).
