@@ -380,7 +380,7 @@ let SHOP = [];
 async function loadShop() {
   try {
     const r = await fetch(SWATCH_SITE + "swatches.json", { cache: "no-store" });
-    if (r.ok) SHOP = (await r.json()).map(x => ({ key: "shop/" + x.file, name: x.name, kind: x.kind, url: SWATCH_SITE + x.file, shop: true }));
+    if (r.ok) SHOP = (await r.json()).map(x => ({ key: "shop/" + x.file, name: x.name, kind: x.kind, url: SWATCH_SITE + x.file, shop: true, cm: x.cm }));
   } catch {}
   SHOP.forEach(x => PRINT[x.key] = x);
 }
@@ -414,16 +414,15 @@ const NS = "http://www.w3.org/2000/svg";
 const save = () => store.set("aika-play-1", state);
 const same = (x, y) => (x || "").toLowerCase() === (y || "").toLowerCase();
 
-// The shop's swatch photos show as 30 cm squares, so a part never shows a seam (the drawing knows its units per cm,
-// taking the shoe as about 26 cm long). A customer's photo shows at the size its frame was set to (it.cm, older ones 30 cm),
-// made seamless when taken. The demo prints keep their old repeat (~6.5 cm).
+// Swatch photos (the shop's and customers') show at the size their camera frame was set to, 5–30 cm (it.cm; older ones
+// 30 cm), made seamless when taken if under 30 cm (the drawing knows its units per cm, taking the shoe as about 26 cm long). The demo prints keep their old repeat (~6.5 cm).
 const SWATCH_CM = 30, DEMO_CM = 6.5;
 let urlOf = it => it.url;  // swapped for inline copies while the picture is drawn
 // Prints lie with the top of the photo pointing right (towards the heel), except on the parts a style lists in
 // st.up (counters, heels…), where it points up. Never mirrored: on a left top view drawn as the right one flipped,
 // the print is flipped back.
 function patternDef(id, key, st, part, flipped) {
-  const it = PRINT[key], size = (it.mine ? it.cm || SWATCH_CM : it.shop ? SWATCH_CM : DEMO_CM) * st.pxPerCm;
+  const it = PRINT[key], size = (it.mine || it.shop ? it.cm || SWATCH_CM : DEMO_CM) * st.pxPerCm;
   const turn = `${flipped ? `matrix(1 0 0 -1 0 ${2 * st.bb[1]}) ` : ""}${(st.up || []).includes(part) ? "" : `rotate(90 ${st.bb[0]} ${st.bb[1]})`}`;
   return `<pattern id="${id}" patternUnits="userSpaceOnUse" x="${st.bb[0]}" y="${st.bb[1]}" width="${size}" height="${size}"${turn.trim() ? ` patternTransform="${turn.trim()}"` : ""}><image href="${urlOf(it)}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice"/></pattern>`;
 }
@@ -907,7 +906,7 @@ function saveSwatch(src, sx, sy, side) {
   let c = document.createElement("canvas");
   c.width = c.height = 640;
   c.getContext("2d").drawImage(src, sx, sy, side, side, 0, 0, 640, 640);
-  c = makeSeamless(c);
+  if (camCm < 30) c = makeSeamless(c);  // only a smaller swatch repeats on the shoe
   const n = myPhotos.reduce((m, p) => Math.max(m, p.n), 0) + 1;
   const m = { key: "mine" + Date.now(), n, name: `My swatch ${n}`, cm: camCm, url: c.toDataURL("image/jpeg", 0.85) };
   myPhotos.push(m);
