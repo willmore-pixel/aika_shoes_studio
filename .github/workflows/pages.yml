@@ -19,7 +19,7 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - run: mkdir _site && cp index.html _site/ && cp -r play _site/  # AIKA PLAY at /play/
+      - run: mkdir _site && cp -r play _site/  # AIKA PLAY at /play/; no root page, so the old address shows 404
       # The same page again at /app/, as a fresh app identity for phones whose Chrome kept a broken install of /play/.
       - run: |
           cp -r play _site/app
