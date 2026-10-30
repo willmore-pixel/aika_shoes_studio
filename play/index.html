@@ -422,11 +422,12 @@ const SWATCH_CM = 30, DEMO_CM = 6.5;
 let urlOf = it => it.url;  // swapped for inline copies while the picture is drawn
 // Prints lie with the top of the photo pointing right (towards the heel), except on the parts a style lists in
 // st.up (counters, heels…), where it points up. Never mirrored: on a left top view drawn as the right one flipped,
-// the print is flipped back.
-function patternDef(id, key, st, part, flipped) {
+// the print is flipped back. Each piece of a part gets its own copy, with the photo's middle on the piece's middle
+// ([cx, cy], the centre of its drawn shape).
+function patternDef(id, key, st, part, flipped, [cx, cy]) {
   const it = PRINT[key], size = (it.mine || it.shop ? it.cm || SWATCH_CM : DEMO_CM) * st.pxPerCm;
-  const turn = `${flipped ? `matrix(1 0 0 -1 0 ${2 * st.bb[1]}) ` : ""}${(st.up || []).includes(part) ? "" : `rotate(90 ${st.bb[0]} ${st.bb[1]})`}`;
-  return `<pattern id="${id}" patternUnits="userSpaceOnUse" x="${st.bb[0]}" y="${st.bb[1]}" width="${size}" height="${size}"${turn.trim() ? ` patternTransform="${turn.trim()}"` : ""}><image href="${urlOf(it)}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice"/></pattern>`;
+  const turn = `${flipped ? `matrix(1 0 0 -1 0 ${2 * cy}) ` : ""}${(st.up || []).includes(part) ? "" : `rotate(90 ${cx} ${cy})`}`;
+  return `<pattern id="${id}" patternUnits="userSpaceOnUse" x="${cx - size / 2}" y="${cy - size / 2}" width="${size}" height="${size}"${turn.trim() ? ` patternTransform="${turn.trim()}"` : ""}><image href="${urlOf(it)}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice"/></pattern>`;
 }
 
 // Measure a drawing once: where the top view ends and the side view starts, and which small filled marks
@@ -467,6 +468,9 @@ function prep(st) {
     return { el, blank, i: g ? +g.dataset.i : -1, j: g ? [...g.querySelectorAll(LEAVES)].indexOf(el) : -1,
       x0: vx + (r.left - hr.left) * k, x1: vx + (r.right - hr.left) * k, y0: vy + (r.top - hr.top) * k, y1: vy + (r.bottom - hr.top) * k };
   }).filter(b => b.x1 - b.x0 > 0 || b.y1 - b.y0 > 0);
+  // The middle of each part piece's drawn shape, where its swatch photo is centred.
+  const ctr = {};
+  for (const q of partEls) { const r = q.el.getBoundingClientRect(); ctr[q.i] = [vx + (r.left + r.width / 2 - hr.left) * k, vy + (r.top + r.height / 2 - hr.top) * k]; }
   host.remove();
   // The widest empty band across the middle of the drawing separates the two views. A drawing with three views
   // (st.views: the right foot's top view, the left foot's, then the side) has two such bands.
@@ -525,7 +529,7 @@ function prep(st) {
     if (r && !mirrored(g, r)) continue;
     g.list.forEach(b => glyphs.push({ i: b.i, j: b.j, cy: g.cy }));
   }
-  return st._prep = { top, topL, side, glyphs, holes };
+  return st._prep = { top, topL, side, glyphs, holes, ctr };
 }
 
 // A chosen part's dashed outline follows the edge of what can be seen of it: its drawn shape minus everything
@@ -611,9 +615,10 @@ async function traceSeen(st, i) {
 function artMarkup(st, prefix, foot, opts = {}) {
   const parts = state[foot], [bx, by, bw, bh] = st.bb, chosen = opts.chosen || new Set();
   const shape = it => `d="${it.d}"${it.t ? ` transform="${it.t}"` : ""}`;
-  const fillFor = p => p === st.lace ? LACES[laceOf(st)] : p === st.buckle ? `url(#${prefix}-buckle)` : parts[p].p && PRINT[parts[p].p] ? `url(#${prefix}-${p})` : parts[p].c || "#FFFFFF";
+  const printed = p => !isHw(st, p) && parts[p].p && PRINT[parts[p].p], ctr = prep(st).ctr;
+  const fillFor = (p, i) => p === st.lace ? LACES[laceOf(st)] : p === st.buckle ? `url(#${prefix}-buckle)` : printed(p) ? `url(#${prefix}-pt${i})` : parts[p].c || "#FFFFFF";
   const soleMap = opts.soleMap || {};
-  let defs = Object.keys(st.parts).filter(p => !isHw(st, p) && parts[p].p && PRINT[parts[p].p]).map(p => patternDef(`${prefix}-${p}`, parts[p].p, st, p, opts.flipped)).join("") +
+  let defs = st.items.map((it, i) => typeof it !== "string" && printed(it.part) ? patternDef(`${prefix}-pt${i}`, parts[it.part].p, st, it.part, opts.flipped, ctr[i]) : "").join("") +
     (st.buckle ? buckleDef(`${prefix}-buckle`, state.buckle) : "");
   let n = 0, outline = "";
   const traced = {};  // traced outlines, keyed by the item they go just before: the next laces, so the laces lie over them
@@ -633,7 +638,7 @@ function artMarkup(st, prefix, foot, opts = {}) {
       defs += `<mask id="${id}-hl" maskUnits="userSpaceOnUse" x="${bx - 10}" y="${by - 10}" width="${bw + 20}" height="${bh + 20}"><rect x="${bx - 10}" y="${by - 10}" width="${bw + 20}" height="${bh + 20}" fill="#fff"/>${later.map(q => `<path ${shape(q)} fill="#000"/>`).join("")}</mask>`;
       outline += `<g mask="url(#${id}-hl)"><path ${shape(it)} fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="4" stroke-linejoin="round"/><path ${shape(it)} fill="none" stroke="#6b7280" stroke-width="2.6" stroke-dasharray="7 4.5" stroke-linecap="round" stroke-linejoin="round"/></g>`;
     }
-    const rect = `<rect${opts.interactive && !isHw(st, it.part) ? ` class="hit" data-part="${it.part}" pointer-events="visiblePainted"` : ""} x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${fillFor(it.part)}" clip-path="url(#${id})"/>`;
+    const rect = `<rect${opts.interactive && !isHw(st, it.part) ? ` class="hit" data-part="${it.part}" pointer-events="visiblePainted"` : ""} x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${fillFor(it.part, i)}" clip-path="url(#${id})"/>`;
     return (it.c ? `<g clip-path="url(#${prefix}-${it.c})">${rect}</g>` : rect) +
       (it.stroke ? `<path ${shape(it)} fill="none" stroke="${it.stroke}" stroke-width="${it.sw}" stroke-miterlimit="10"/>` : "");
   });
