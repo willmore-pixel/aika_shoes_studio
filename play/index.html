@@ -348,8 +348,8 @@ const laceOf = (st = STYLES[state.style]) => lacesOf(st).includes(state.lace) ? 
 // The drawing as shown: the style's own, or the one its chosen sole brings.
 function artOf(k = state.style) {
   const so = soleOf(k);
-  // A sole with its own drawing measures and traces that drawing afresh (_prep, _seen), never the base drawing's.
-  return so.style ? (so._st ||= { ...STYLES[k], ...so.style, seen: so.style.seen, soles: undefined, _prep: undefined, _seen: undefined }) : STYLES[k];
+  // A sole with its own drawing measures and traces that drawing afresh (_prep, _seen, _mid), never the base drawing's.
+  return so.style ? (so._st ||= { ...STYLES[k], ...so.style, seen: so.style.seen, soles: undefined, _prep: undefined, _seen: undefined, _mid: undefined }) : STYLES[k];
 }
 const soleTile = so => so.tile || SOLE_SRC.map(h => (so.map || {})[h] || h);
 // A style may name one of its parts as the laces (st.lace) or the buckle (st.buckle); those take the shoelace
@@ -423,7 +423,7 @@ let urlOf = it => it.url;  // swapped for inline copies while the picture is dra
 // Prints lie with the top of the photo pointing right (towards the heel), except on the parts a style lists in
 // st.up (counters, heels…), where it points up. Never mirrored: on a left top view drawn as the right one flipped,
 // the print is flipped back. Each piece of a part gets its own copy, with the photo's middle on the piece's middle
-// ([cx, cy], the centre of its drawn shape).
+// ([cx, cy], see pieceMiddle).
 function patternDef(id, key, st, part, flipped, [cx, cy]) {
   const it = PRINT[key], size = (it.mine || it.shop ? it.cm || SWATCH_CM : DEMO_CM) * st.pxPerCm;
   const turn = `${flipped ? `matrix(1 0 0 -1 0 ${2 * cy}) ` : ""}${(st.up || []).includes(part) ? "" : `rotate(90 ${cx} ${cy})`}`;
@@ -532,6 +532,43 @@ function prep(st) {
   return st._prep = { top, topL, side, glyphs, holes, ctr };
 }
 
+// Where a piece's swatch photo is centred: the point deepest inside what can be seen of it in the view being drawn
+// (its biggest visible area inside box, from the traced outline below), so a U-shaped piece gets it in its widest
+// part rather than in the gap. Until the outline is traced, the middle of the whole drawn shape. One drawn shape can
+// hold pieces in several views (the top view's toe and the side view's), hence the box.
+function pieceMiddle(st, i, box) {
+  const seen = seenOutline(st, i);
+  if (!seen) return prep(st).ctr[i];
+  const key = i + (box ? `@${Math.round(box.y0)}` : ""), cache = (st._mid ||= {});
+  if (cache[key]) return cache[key];
+  let best = null, bestA = -1;
+  for (const loop of seen.split("Z")) {
+    const n = loop.match(/-?[\d.]+/g); if (!n || n.length < 6) continue;
+    const pts = []; for (let j = 0; j + 1 < n.length; j += 2) pts.push([+n[j], +n[j + 1]]);
+    let a = 0, x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    pts.forEach(([x, y], j) => { const [X, Y] = pts[(j + 1) % pts.length]; a += x * Y - X * y; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    if (box && (mx < box.x0 || mx > box.x1 || my < box.y0 || my > box.y1)) continue;
+    if (Math.abs(a) > bestA) { bestA = Math.abs(a); best = { pts, x0, x1, y0, y1 }; }
+  }
+  if (!best) return cache[key] = prep(st).ctr[i];
+  // Try a 48 x 48 grid of points over the area; keep the inside one farthest from its edge.
+  const { pts, x0, x1, y0, y1 } = best, G = 48;
+  let mid = [(x0 + x1) / 2, (y0 + y1) / 2], far = -1;
+  for (let gy = 0; gy < G; gy++) for (let gx = 0; gx < G; gx++) {
+    const x = x0 + (gx + .5) * (x1 - x0) / G, y = y0 + (gy + .5) * (y1 - y0) / G;
+    let inside = false, d = Infinity;
+    for (let j = 0, k = pts.length - 1; j < pts.length; k = j++) {
+      const [ax, ay] = pts[j], [bx, by] = pts[k];
+      if ((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) inside = !inside;
+      const ex = bx - ax, ey = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey || 1)));
+      d = Math.min(d, Math.hypot(x - ax - t * ex, y - ay - t * ey));
+    }
+    if (inside && d > far) { far = d; mid = [x, y]; }
+  }
+  return cache[key] = mid;
+}
+
 // A chosen part's dashed outline follows the edge of what can be seen of it: its drawn shape minus everything
 // painted over it (other parts, the sole, the insole), except the laces, which lie on top of the outline instead. Found once per drawing by painting that onto a canvas and tracing its edge.
 // The upload page does this once and keeps the result in the style (st.seen, by item), so phones don't have to;
@@ -615,10 +652,10 @@ async function traceSeen(st, i) {
 function artMarkup(st, prefix, foot, opts = {}) {
   const parts = state[foot], [bx, by, bw, bh] = st.bb, chosen = opts.chosen || new Set();
   const shape = it => `d="${it.d}"${it.t ? ` transform="${it.t}"` : ""}`;
-  const printed = p => !isHw(st, p) && parts[p].p && PRINT[parts[p].p], ctr = prep(st).ctr;
+  const printed = p => !isHw(st, p) && parts[p].p && PRINT[parts[p].p];
   const fillFor = (p, i) => p === st.lace ? LACES[laceOf(st)] : p === st.buckle ? `url(#${prefix}-buckle)` : printed(p) ? `url(#${prefix}-pt${i})` : parts[p].c || "#FFFFFF";
   const soleMap = opts.soleMap || {};
-  let defs = st.items.map((it, i) => typeof it !== "string" && printed(it.part) ? patternDef(`${prefix}-pt${i}`, parts[it.part].p, st, it.part, opts.flipped, ctr[i]) : "").join("") +
+  let defs = st.items.map((it, i) => typeof it !== "string" && printed(it.part) ? patternDef(`${prefix}-pt${i}`, parts[it.part].p, st, it.part, opts.flipped, pieceMiddle(st, i, opts.box)) : "").join("") +
     (st.buckle ? buckleDef(`${prefix}-buckle`, state.buckle) : "");
   let n = 0, outline = "";
   const traced = {};  // traced outlines, keyed by the item they go just before: the next laces, so the laces lie over them
@@ -658,7 +695,7 @@ function drawView(svg, styleKey, foot, view, prefix, opts = {}) {
   svg.setAttribute("viewBox", vb.join(" "));
   if (opts.size) { svg.setAttribute("width", opts.size[0]); svg.setAttribute("height", opts.size[1]); }
   const mirror = foot === "L" && view === "top" && pr.side && !own;
-  const art = artMarkup(st, prefix, foot, { ...opts, flipped: mirror });
+  const art = artMarkup(st, prefix, foot, { ...opts, flipped: mirror, box: box && (mirror ? pr.top : box) });
   svg.innerHTML = mirror ? art.replace(`<g pointer-events="none">`, `<g pointer-events="none" transform="matrix(1 0 0 -1 0 ${pr.top.y0 + pr.top.y1})">`) : art;
   const inL = g => pr.topL && g.cy > pr.topL.y0;
   if (mirror || own) for (const g of pr.glyphs.filter(g => own ? inL(g) : !inL(g))) {
