@@ -417,7 +417,7 @@ const save = () => store.set("aika-play-1", state);
 const same = (x, y) => (x || "").toLowerCase() === (y || "").toLowerCase();
 
 // Swatch photos (the shop's and customers') show at the size their camera frame was set to, 5–30 cm (it.cm; older ones
-// 30 cm), made seamless when taken if under 30 cm (the drawing knows its units per cm, taking the shoe as about 26 cm long). The demo prints keep their old repeat (~6.5 cm).
+// 30 cm), kept as the original photo (the drawing knows its units per cm, taking the shoe as about 26 cm long). The demo prints keep their old repeat (~6.5 cm).
 const SWATCH_CM = 30, DEMO_CM = 6.5;
 let urlOf = it => it.url;  // swapped for inline copies while the picture is drawn
 // Prints lie with the top of the photo pointing right (towards the heel), except on the parts a style lists in
@@ -947,10 +947,9 @@ $("mini").addEventListener("click", () => $("stage").scrollIntoView({ behavior: 
 
 // ---- Customers' own swatch photos ----
 function saveSwatch(src, sx, sy, side) {
-  let c = document.createElement("canvas");
+  const c = document.createElement("canvas");
   c.width = c.height = 640;
   c.getContext("2d").drawImage(src, sx, sy, side, side, 0, 0, 640, 640);
-  if (camCm < 30) c = makeSeamless(c);  // only a smaller swatch repeats on the shoe
   const n = myPhotos.reduce((m, p) => Math.max(m, p.n), 0) + 1;
   const m = { key: "mine" + Date.now(), n, name: `My swatch ${n}`, cm: camCm, url: c.toDataURL("image/jpeg", 0.85) };
   myPhotos.push(m);
@@ -966,32 +965,6 @@ function removePhoto(key, quiet) {
 }
 ["snapCam", "snapAlbum"].forEach(id => $(id).addEventListener("change", e => { if (e.target.files[0]) openCrop(e.target.files[0]); e.target.value = ""; }));
 $("snapCam").addEventListener("click", e => { if (navigator.mediaDevices?.getUserMedia) { e.preventDefault(); openCam($("snapCam")); } });
-
-// Method 2+ (from swatch-kit.js): even out the light (divide by a very soft copy), then blend the edges with a copy
-// shifted by half a tile, so a small swatch repeats on the shoe without seams.
-function makeSeamless(src, N = 640, band = 0.22) {
-  const mk = n => { const c = document.createElement("canvas"); c.width = c.height = n; return c; };
-  const c = mk(N), x = c.getContext("2d");
-  x.drawImage(src, 0, 0, N, N);
-  const a = x.getImageData(0, 0, N, N).data;
-  const t = mk(10), b = mk(N), bx = b.getContext("2d");
-  t.getContext("2d").imageSmoothingQuality = "high"; t.getContext("2d").drawImage(c, 0, 0, 10, 10);
-  bx.imageSmoothingEnabled = true; bx.imageSmoothingQuality = "high"; bx.drawImage(t, 0, 0, N, N);
-  const low = bx.getImageData(0, 0, N, N).data, mean = [0, 0, 0];
-  for (let i = 0; i < a.length; i += 4) for (let ch = 0; ch < 3; ch++) mean[ch] += a[i + ch];
-  for (let ch = 0; ch < 3; ch++) mean[ch] /= N * N;
-  const f = new Float32Array(N * N * 3);
-  for (let p = 0, i = 0; p < N * N; p++, i += 4) for (let ch = 0; ch < 3; ch++) f[p * 3 + ch] = a[i + ch] / Math.max(low[i + ch], 1) * mean[ch];
-  const out = x.createImageData(N, N), o = out.data, h = N >> 1, bw = N * band;
-  for (let y = 0; y < N; y++) for (let xx = 0; xx < N; xx++) {
-    let w = Math.min(Math.min(xx, y, N - 1 - xx, N - 1 - y) / bw, 1); w = w * w * (3 - 2 * w);
-    const p = y * N + xx, q = ((y + h) % N) * N + (xx + h) % N;
-    for (let ch = 0; ch < 3; ch++) o[p * 4 + ch] = w * f[p * 3 + ch] + (1 - w) * f[q * 3 + ch];
-    o[p * 4 + 3] = 255;
-  }
-  x.putImageData(out, 0, 0);
-  return c;
-}
 
 // The in-app camera. A phone can't measure distance, so the square is a guide: what fills it is shown on the
 // shoe as camCm x camCm (5–30 cm, set with the slider, remembered). Only the square is kept.
