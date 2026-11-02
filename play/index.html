@@ -122,6 +122,10 @@ h2 small { font-size: inherit; font-weight: 400; }
 .done h3 { margin: 0 0 22px; font-size: var(--title); font-weight: 500; letter-spacing: .06em; }
 .big { position: relative; width: 100%; min-height: 62px; border-radius: 14px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: var(--title); letter-spacing: .02em; line-height: 1.4; box-sizing: border-box; padding: 8px 56px; }
 .big + .big { margin-top: 14px; }
+.note { display: block; text-align: left; margin: 0 0 18px; font-size: var(--text); color: #444; }
+.note small { color: var(--muted); font-size: var(--text); margin-left: 4px; }
+.note textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; min-height: 84px; padding: 10px 12px; border: 1px solid var(--chip); border-radius: 14px; background: transparent; color: inherit; font: inherit; font-size: 16px; line-height: 1.5; resize: vertical; }
+.note textarea:focus { outline: none; border-color: var(--fg); }
 .big svg { position: absolute; left: 36px; top: 50%; transform: translate(-50%, -50%); }
 .big.save svg { width: 28px; height: 28px; }
 .big.line svg { width: 44px; height: 44px; }
@@ -240,6 +244,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 
   <section class="done" id="secDone">
     <h3>完成你的設計 <small>· FINISHED</small></h3>
+    <label class="note">留言給老闆阿昌: <small>Message to A-Chang</small><textarea id="note" rows="3" maxlength="300" placeholder="想跟老闆說的話，會印在你的設計圖上 · Anything to tell us, printed on your picture"></textarea></label>
     <button class="big save" type="button" id="saveImg"><svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="#111" stroke-width="2.6"><path d="M23 6v24M13 21l10 10 10-10"/><path d="M4 30v10h38V30"/></svg><span>儲存圖片至手機相簿<small>Save the picture to your phone</small></span></button>
     <a class="big line" id="lineBtn" href="#" target="_blank" rel="noopener"><svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 6C16.5 6 4 15.6 4 27.5c0 10 8.8 18.4 20.8 20.8l2.2 9.7 9-9.3C49.7 47.2 60 38.3 60 27.5 60 15.6 47.5 6 32 6z" fill="#111"/><text x="32" y="33" fill="#fff" font-family="Arial, sans-serif" font-weight="700" font-size="14" text-anchor="middle">LINE</text></svg><span>加入愛花製作所&nbsp;LINE<br>傳送你的設計給我們<small>Add us on LINE and send us your design</small></span></a>
   </section>
@@ -1138,14 +1143,25 @@ async function makePicture() {
     const gap = (artW - per * T) / (per - 1), k = T / 150, rowH = T + 110 * k + 10;
     const tiles = rows.flatMap((r, j) => r.map((t, i) => ({ ...t, col: i, row: j })));
     const artH = views.reduce((a, v) => a + v.h, 0) + 30 * (views.length - 1);
-    const H = M + artH + 70 + 150 + 50 + rows.length * rowH + 30 + 90;
+    const font = (px, w = 400) => `${w} ${px}px Jost, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif`;
+    // The customer's message, wrapped to the picture's width (character by character, so Chinese wraps too).
+    const note = $("note").value.trim(), noteLines = [];
+    if (note) {
+      const m = document.createElement("canvas").getContext("2d"); m.font = font(38);
+      note.split(/\r?\n/).forEach(par => {
+        let line = "";
+        for (const ch of par) { if (line && m.measureText(line + ch).width > artW - 20) { noteLines.push(line); line = ch.trim() ? ch : ""; } else line += ch; }
+        noteLines.push(line);
+      });
+    }
+    const noteH = noteLines.length ? 40 + 60 + noteLines.length * 54 : 0;
+    const H = M + artH + 70 + 150 + 50 + rows.length * rowH + noteH + 30 + 90;
     const c = document.createElement("canvas"); c.width = W; c.height = H;
     const ctx = c.getContext("2d");
     ctx.fillStyle = "#fbfbfb"; ctx.fillRect(0, 0, W, H);
     let y = M;
     views.forEach(v => { ctx.drawImage(v.img, M, y, artW, v.h); y += v.h + 30; });
     y += 40;
-    const font = (px, w = 400) => `${w} ${px}px Jost, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif`;
     const z = state.size, d = new Date(), date = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
     [["尺寸 Size", z ? `EU ${z.v}  ${SIZE_ZH[z.g]}` : "未選 Not chosen"], ["日期 Date", date], ["款式 Style", st.name]].forEach(([k, v], i) => {
       ctx.fillStyle = "#777"; ctx.font = font(40); ctx.fillText(k, M + 10, y + 40 + i * 58);
@@ -1177,6 +1193,12 @@ async function makePicture() {
       ctx.fillStyle = "#111"; ctx.fillText(code, x + T / 2, ty + T + 92 * k);
       ctx.textAlign = "left";
     });
+    if (noteLines.length) {
+      let ny = y + rows.length * rowH + 40;
+      ctx.fillStyle = "#777"; ctx.font = font(40); ctx.fillText("留言 Message", M + 10, ny + 40); ny += 60;
+      ctx.fillStyle = "#333"; ctx.font = font(38);
+      noteLines.forEach((l, i) => ctx.fillText(l, M + 10, ny + 40 + i * 54));
+    }
     ctx.fillStyle = "#aaa"; ctx.font = font(26); ctx.textAlign = "right"; ctx.fillText("AIKA PLAY · 愛花製作所", W - M, H - 40);
     // JPEG: about a quarter of a PNG's size, so it saves and downloads much faster (still sharp at this quality).
     const blob = await new Promise(ok => c.toBlob(ok, "image/jpeg", 0.92));
@@ -1222,6 +1244,9 @@ $("saveImg").addEventListener("click", async () => {
   finally { b.removeAttribute("aria-busy"); }
 });
 $("resultClose").addEventListener("click", () => $("result").hidden = true);
+// The customer's message to the boss: kept on this phone, printed on the saved picture.
+$("note").value = store.get("aika-play-note", "");
+$("note").addEventListener("input", () => store.set("aika-play-note", $("note").value));
 if (LINE_URL) $("lineBtn").href = LINE_URL;
 else $("lineBtn").addEventListener("click", async e => { e.preventDefault(); const f = await makePicture(); if (!(await sharePicture(f))) showResult(f); });
 
