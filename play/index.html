@@ -136,6 +136,8 @@ h2 small { font-size: inherit; font-weight: 400; }
 .big.save svg { width: 28px; height: 28px; }
 .big.line svg { width: 44px; height: 44px; }
 .big.save { background: var(--chip); }
+/* A small line over the save button while no size is picked; tapping it goes to 尺寸. */
+.need-size { display: block; margin: 0 auto 10px; padding: 4px 6px; border: 0; background: none; font: inherit; font-size: var(--text); color: #b3261e; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .big.save[aria-busy="true"] { opacity: .6; }
 .big.line { border: 1px solid var(--chip); text-decoration: none; color: inherit; }
 .big small { display: block; font-size: var(--text); color: #444; letter-spacing: .01em; }
@@ -251,6 +253,7 @@ h2 small { font-size: inherit; font-weight: 400; }
   <section class="done" id="secDone">
     <h3>完成你的設計 <small>· FINISHED</small></h3>
     <label class="note">留言給老闆阿昌:<textarea id="note" rows="3" maxlength="300" placeholder="Leave a message…"></textarea></label>
+    <button class="need-size" type="button" id="needSize" hidden>還沒選尺寸 · Size not chosen</button>
     <button class="big save" type="button" id="saveImg"><svg width="46" height="46" viewBox="0 0 46 46" fill="none" stroke="#111" stroke-width="2.6"><path d="M23 6v24M13 21l10 10 10-10"/><path d="M4 30v10h38V30"/></svg><span>儲存圖片至手機相簿<small>Save the picture to your phone</small></span></button>
     <a class="big line" id="lineBtn" href="#" target="_blank" rel="noopener"><svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 6C16.5 6 4 15.6 4 27.5c0 10 8.8 18.4 20.8 20.8l2.2 9.7 9-9.3C49.7 47.2 60 38.3 60 27.5 60 15.6 47.5 6 32 6z" fill="#111"/><text x="32" y="33" fill="#fff" font-family="Arial, sans-serif" font-weight="700" font-size="14" text-anchor="middle">LINE</text></svg><span>加入愛花製作所&nbsp;LINE<br>傳送你的設計給我們<small>Add us on LINE and send us your design</small></span></a>
   </section>
@@ -369,6 +372,10 @@ const isHw = (st, p) => p === st.lace || p === st.buckle;
 const partsOf = (k = state.style) => Object.keys(STYLES[k].parts).filter(p => !isHw(STYLES[k], p));
 // A part's name on its chip and in the saved picture: R 1, R 2 … numbered without the heel, which is called 高跟.
 const isHeel = (p, k = state.style) => /^\s*(heel|高跟)\s*$/i.test(STYLES[k].parts[p] || "");
+// Part names in Chinese for the saved picture (the drawings name parts in English); a name not listed shows as it is.
+const PART_ZH = { front: "前片", rear: "後片", back: "後片", toe: "鞋頭", wing: "翼片", quarter: "側片", "inner quarter": "內側片", tongue: "鞋舌",
+  counter: "後跟片", heel: "鞋跟", strap: "繫帶", buckle: "釦子", eyestay: "鞋眼片", collar: "鞋口", "heel tab": "後拉帶", elastic: "鬆緊帶", laces: "鞋帶", middle: "中片" };
+const partZh = n => PART_ZH[String(n || "").trim().toLowerCase()] || n || "";
 const partLabel = (f, p, gap = "", k = state.style) => f + gap + (isHeel(p, k) ? "高跟 Heel" : partsOf(k).filter(q => !isHeel(q, k)).indexOf(p) + 1);
 function toBlobUrl(dataUrl) {
   try {
@@ -386,6 +393,8 @@ const store = {
 
 // Swatches customers photograph in the shop. They live only in this phone's browser.
 let myPhotos = store.get("scs-photos", []);
+// Customers' own photos are called 顏色 1, 顏色 2…; ones saved earlier as "My swatch N" are shown that way too.
+myPhotos.forEach(m => { if (/^My swatch \d+$/.test(m.name)) m.name = `顏色 ${m.n}`; });
 const addMyPhotos = () => myPhotos.forEach(m => PRINT[m.key] = { ...m, mine: true, kind: "leather" });
 // The shop's own swatch photos, published (cropped, listed in swatches.json) by the aika_swatches site. The file name is the swatch's code.
 const SWATCH_SITE = "https://willmore-pixel.github.io/aika_swatches/";
@@ -420,7 +429,8 @@ const tidyState = () => ["L", "R"].forEach(f => PARTS.forEach(p => {
 const firstSel = () => new Set(["L:" + partsOf()[0]]);
 let sel = new Set(["L:a"]);
 let editing = false;
-const opened = Object.assign({ how: true, style: false, size: true, leather: true, fabric: false, sheet: true, source: true }, store.get("aika-play-open", {}));
+// First visit: 流程說明 folded, 款式 open, and the swatch panel shows just one row of swatches (材質來源 folded) so the shoe shows.
+const opened = Object.assign({ how: false, style: true, size: true, leather: true, fabric: false, sheet: true, source: false }, store.get("aika-play-open", {}));
 
 const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
@@ -837,6 +847,7 @@ function renderSizes() {
   if (!sizeOk(state.size)) { state.size = null; save(); }
   const z = state.size;
   $("sizeNow").textContent = z ? `EU ${z.v} ${SIZE_ZH[z.g]}` : "";
+  $("needSize").hidden = !!z;
   $("sizes").innerHTML = Object.entries(sizesFor()).map(([g, list]) => `<div class="sz-label">${SIZE_ZH[g] || g}</div><div class="sizes">` +
     list.map(v => `<button class="sz" type="button" aria-pressed="${!!z && z.g === g && z.v === v}" data-g="${g}" data-v="${v}">${v}</button>`).join("") + `</div>`).join("");
   $("sizes").querySelectorAll(".sz").forEach(b => b.addEventListener("click", () => {
@@ -889,6 +900,11 @@ document.querySelectorAll(".fold").forEach(f => {
     opened[k] = !opened[k]; f.dataset.open = opened[k]; t?.setAttribute("aria-expanded", opened[k]); store.set("aika-play-open", opened);
   });
 });
+$("needSize").addEventListener("click", () => {
+  const t = $("secSize");
+  if (!opened.size) t.querySelector(":scope > .head").click();
+  t.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+});
 // 流程說明 links: open that section if it is folded, then glide to it.
 document.querySelectorAll(".steps a").forEach(a => a.addEventListener("click", e => {
   e.preventDefault();
@@ -900,7 +916,7 @@ $("editMine").addEventListener("click", e => { e.stopPropagation(); editing = !e
 
 // The page leaves room at the bottom for the floating swatches.
 const sheet = $("sheet");
-let sheetH = store.get("aika-play-sheet-h", 0), sheetDrag = null, sheetDragged = false;  // swatch area height in px; 0 = the usual height
+let sheetH = store.get("aika-play-sheet-h", -1), sheetDrag = null, sheetDragged = false;  // swatch area height in px; -1 = never dragged: one row
 new ResizeObserver(() => { document.querySelector(".page").style.paddingBottom = sheet.offsetHeight + 24 + "px"; placeSheet(); }).observe(sheet);
 
 // Hold the panel's top bar and drag it up or down (height remembered on this phone); it stays on the bottom edge.
@@ -912,9 +928,16 @@ const bodyNow = () => sheetBody.clientHeight - bodyPad();
 // Tallest it drags to: all the swatches, or up to near the top of the screen.
 const bodyMax = () => Math.max(0, Math.min(sheetBody.scrollHeight - bodyPad(), innerHeight - sheetHead.offsetHeight - bodyPad() - 48));
 const halfRow = () => (sheet.querySelector(".sw")?.offsetHeight || 52) / 2;
+// Down to the bottom of the first row of swatches (with its name), for a panel that was never dragged.
+function firstRowH() {
+  const t = sheetBody.querySelector(".swc");
+  if (!t) return 0;
+  return Math.ceil(t.getBoundingClientRect().bottom - sheetBody.getBoundingClientRect().top + sheetBody.scrollTop - parseFloat(getComputedStyle(sheetBody).paddingTop) + 4);
+}
 function placeSheet() {
   if (sheetDrag?.moving) return;
-  sheetBody.style.maxHeight = opened.sheet && sheetH ? Math.min(sheetH, bodyMax()) + "px" : "";
+  const h = sheetH < 0 ? firstRowH() : sheetH;
+  sheetBody.style.maxHeight = opened.sheet && h ? Math.min(h, bodyMax()) + "px" : "";
 }
 function setSheetOpen(v) {
   opened.sheet = v; sheet.dataset.open = v; store.set("aika-play-open", opened);
@@ -965,7 +988,7 @@ function saveSwatch(src, sx, sy, side) {
   c.width = c.height = 640;
   c.getContext("2d").drawImage(src, sx, sy, side, side, 0, 0, 640, 640);
   const n = myPhotos.reduce((m, p) => Math.max(m, p.n), 0) + 1;
-  const m = { key: "mine" + Date.now(), n, name: `My swatch ${n}`, cm: camCm, url: c.toDataURL("image/jpeg", 0.85) };
+  const m = { key: "mine" + Date.now(), n, name: `顏色 ${n}`, cm: camCm, url: c.toDataURL("image/jpeg", 0.85) };
   myPhotos.push(m);
   while (myPhotos.length > 12) removePhoto(myPhotos[0].key, true);
   store.set("scs-photos", myPhotos); addMyPhotos();
@@ -1147,7 +1170,9 @@ async function makePicture() {
     const rest = [{ label: "鞋底 Sole", sole: true }];
     if (st.lace) rest.push({ label: "鞋帶 Lace", lace: true });
     if (st.buckle) rest.push({ label: "釦子 Buckle", buckle: true });
-    const rows = [...["R", "L"].map(f => parts.map(p => ({ label: partLabel(f, p), s: state[f][p] }))), rest];
+    // Each tile says which part it is, e.g. "R1 鞋頭" (a heel just "R 高跟").
+    const partName = (f, p) => { const l = partLabel(f, p), n = isHeel(p) ? "" : partZh(st.parts[p]); return n ? `${l} ${n}` : l; };
+    const rows = [...["R", "L"].map(f => parts.map(p => ({ label: partName(f, p), s: state[f][p] }))), rest];
     const per = Math.max(5, ...rows.map(r => r.length)), T = Math.min(150, Math.floor((artW - (per - 1) * 24) / per));
     const gap = (artW - per * T) / (per - 1), k = T / 150;
     // Shop swatches print their code and, on the next line, their name.
