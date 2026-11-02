@@ -1215,8 +1215,12 @@ async function makePicture() {
     }
     ctx.fillStyle = "#aaa"; ctx.font = font(26); ctx.textAlign = "right"; ctx.fillText("AIKA PLAY · 愛花製作所", W - M, H - 40);
     // JPEG: about a quarter of a PNG's size, so it saves and downloads much faster (still sharp at this quality).
-    const blob = await new Promise(ok => c.toBlob(ok, "image/jpeg", 0.92));
-    return new File([blob], `aika-play-${date.replaceAll(".", "")}.jpg`, { type: "image/jpeg" });
+    // toDataURL, not toBlob: on Android Chrome toBlob waits for the browser to be idle and could sit there until the next tap.
+    const url = c.toDataURL("image/jpeg", 0.92), bin = atob(url.slice(url.indexOf(",") + 1)), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const file = new File([bytes], `aika-play-${date.replaceAll(".", "")}.jpg`, { type: "image/jpeg" });
+    file.dataUrl = url;
+    return file;
   } finally { urlOf = it => it.url; }
 }
 
@@ -1227,7 +1231,7 @@ async function showResult(file) {
   if (lastUrl) URL.revokeObjectURL(lastUrl);
   lastUrl = URL.createObjectURL(file); lastFile = file;
   // The picture itself as a data: URL: apps' built-in browsers save a long-pressed image more reliably that way.
-  $("resultImg").src = await asDataUrl(lastUrl).catch(() => lastUrl);
+  $("resultImg").src = file.dataUrl || lastUrl;
   $("resultDl").href = lastUrl; $("resultDl").download = file.name;
   $("resultHint").textContent = HINT; $("resultHint").className = "";
   $("result").hidden = false;
