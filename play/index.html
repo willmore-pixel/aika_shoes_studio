@@ -119,7 +119,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 .swc figcaption { margin-top: 5px; font-size: var(--text); line-height: 1.25; text-align: center; color: #444; overflow-wrap: anywhere; }
 .swc figcaption.off { opacity: .22; }
 .swc figcaption b { display: block; font-weight: 500; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.swc figcaption span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--muted); }
+.swc figcaption span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .sw .x { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; background: var(--fg); color: #fff; font-size: 14px; line-height: 22px; text-align: center; }
 .empty { color: var(--muted); font-size: var(--text); margin: 0; grid-column: 1 / -1; }
 
@@ -771,8 +771,8 @@ const fitKinds = () => ["L", "R"].forEach(f => partsOf().forEach(p => {
 function tile(it, removable) {
   const p = isPrint(it) && PRINT[it.slice(6)], name = p ? p.name : CODE[it.toLowerCase()];
   const look = p ? `background-image:url('${p.url}')` : `background:${it}`;
-  const [code, nm] = splitName(name);
-  return `<figure class="swc"><button class="sw" type="button" title="${name}" aria-label="${name}" aria-pressed="${onAll(it)}"${fitsSel(it) ? "" : ' aria-disabled="true"'} data-it="${it}" style="${look}">${removable ? '<span class="x" aria-hidden="true">×</span>' : ""}</button><figcaption${fitsSel(it) ? "" : ' class="off"'}><b>${code}</b>${nm ? `<span>${nm}</span>` : ""}</figcaption></figure>`;
+  const [code, nm] = splitName(name);  // the panel shows the name, or the code when there is none
+  return `<figure class="swc"><button class="sw" type="button" title="${name}" aria-label="${name}" aria-pressed="${onAll(it)}"${fitsSel(it) ? "" : ' aria-disabled="true"'} data-it="${it}" style="${look}">${removable ? '<span class="x" aria-hidden="true">×</span>' : ""}</button><figcaption${fitsSel(it) ? "" : ' class="off"'}>${nm ? `<span>${nm}</span>` : `<b>${code}</b>`}</figcaption></figure>`;
 }
 function renderSwatches() {
   const mine = [...myPhotos].reverse().map(m => "print:" + m.key);
