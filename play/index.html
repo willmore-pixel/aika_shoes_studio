@@ -69,6 +69,8 @@ h2 small { font-size: inherit; font-weight: 400; }
 .style-card { border: 1px solid var(--soft); border-radius: 12px; padding: 6px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: var(--text); line-height: 1.35; text-align: center; }
 .style-card small { display: block; font-size: var(--text); color: var(--muted); }
 .style-card svg, .style-card img { width: 100%; aspect-ratio: 4/3; display: block; object-fit: contain; }
+.style-card .card-art { width: 100%; aspect-ratio: 4/3; display: flex; flex-direction: column; justify-content: center; gap: 4%; }
+.style-card .card-art svg { width: 100%; aspect-ratio: auto; flex: 1 1 0; min-height: 0; }
 .style-card[aria-pressed="true"] { border-color: var(--chip); background: #f2f2f2; }
 
 .sz-label { margin: 10px 0 6px; font-size: var(--text); color: var(--muted); }
@@ -826,13 +828,17 @@ function renderStyles() {
   const box = $("styles"), keys = Object.keys(STYLES).join();
   if (box.dataset.keys !== keys) {
     box.dataset.keys = keys;
-    box.innerHTML = Object.entries(STYLES).map(([k, s]) => `<button class="style-card" type="button" data-s="${k}">${s.thumb ? `<img src="${s.thumb}" alt="">` : `<svg data-s="${k}"></svg>`}<span>${nameHtml(s.name)}</span></button>`).join("");
+    box.innerHTML = Object.entries(STYLES).map(([k, s]) => `<button class="style-card" type="button" data-s="${k}">${s.thumb ? `<img src="${s.thumb}" alt="">` : `<div class="card-art"><svg data-s="${k}" data-v="top"></svg><svg data-s="${k}" data-v="side"></svg></div>`}<span>${nameHtml(s.name)}</span></button>`).join("");
     box.querySelectorAll("button[data-s]").forEach(b => b.addEventListener("click", () => {
       state.style = b.dataset.s; sel = firstSel(); save(); renderAll();
     }));
   }
   box.querySelectorAll("button[data-s]").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === state.style));
-  box.querySelectorAll("svg[data-s]").forEach(svg => drawView(svg, svg.dataset.s, "L", "all", "th-" + svg.dataset.s));
+  // Without a picture, the card is drawn here the same way: the right foot's top view over the side view.
+  box.querySelectorAll("svg[data-s]").forEach(svg => {
+    const k = svg.dataset.s, v = prep(artOf(k)).side ? svg.dataset.v : "all";
+    if (v === "all" && svg.dataset.v === "side") svg.remove(); else drawView(svg, k, "R", v, `th${svg.dataset.v[0]}-${k}`);
+  });
 }
 
 // A style can be made in only some sizes (st.sizes = { women: [from, to], men: [from, to] }, st.whole, set on the upload page).
