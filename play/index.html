@@ -124,6 +124,12 @@ h2 small { font-size: inherit; font-weight: 400; }
 .swc figcaption span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .sw .x { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; background: var(--fg); color: #fff; font-size: 14px; line-height: 22px; text-align: center; }
 .empty { color: var(--muted); font-size: var(--text); margin: 0; grid-column: 1 / -1; }
+/* Until the styles have come from the swatch site (or if they can't), only a note shows where the styles and shoe go. */
+body[data-load] .need-data { display: none !important; }
+.load-note { display: none; padding: 28px 8px 36px; text-align: center; font-size: var(--text); line-height: 1.6; color: var(--muted); }
+body[data-load] .load-note { display: block; }
+.load-note b { display: block; font-size: var(--title); font-weight: 500; color: var(--ink, #111); }
+.load-note button { margin-top: 14px; padding: 8px 22px; border: 1px solid #111; border-radius: 999px; background: #fff; font: inherit; color: #111; }
 
 .done { text-align: center; padding-top: 28px; }
 .done h3 small { font-size: inherit; font-weight: 400; }
@@ -209,15 +215,16 @@ h2 small { font-size: inherit; font-weight: 400; }
 
   <section class="fold" data-fold="style" id="secStyle">
     <div class="head"><h2>款式 <small>· STYLE</small></h2><span class="now" id="styleNow"></span><button class="tog" type="button" aria-label="展開或收起"></button></div>
-    <div class="styles body" id="styles"></div>
+    <div class="styles body need-data" id="styles"></div>
+    <div class="load-note" id="loadNote" role="status"></div>
   </section>
 
-  <section class="fold" data-fold="size" id="secSize">
+  <section class="fold need-data" data-fold="size" id="secSize">
     <div class="head"><h2>尺寸 <small>· SIZE</small></h2><span class="now" id="sizeNow"></span><button class="tog" type="button" aria-label="展開或收起"></button></div>
     <div class="body" id="sizes"></div>
   </section>
 
-  <div class="stage" id="stage">
+  <div class="stage need-data" id="stage">
     <svg class="top" id="topR" role="img" aria-label="右腳"></svg>
     <svg class="top" id="topL" role="img" aria-label="左腳"></svg>
     <div class="label">鞋面 Upper</div>
@@ -225,7 +232,7 @@ h2 small { font-size: inherit; font-weight: 400; }
     <div class="label">鞋底 Sole</div>
   </div>
 
-  <section>
+  <section class="need-data">
     <h2>鞋面部位 <small>· UPPER PARTS</small></h2>
     <div class="chips" id="chipsR"></div>
     <div class="chips" id="chipsL"></div>
@@ -236,23 +243,23 @@ h2 small { font-size: inherit; font-weight: 400; }
     </div>
   </section>
 
-  <section>
+  <section class="need-data">
     <h2>鞋底 <small>· SOLE</small></h2>
     <div class="chips" id="soles"></div>
   </section>
 
 
-  <section id="laceSec" hidden>
+  <section class="need-data" id="laceSec" hidden>
     <h2>鞋帶 <small>· SHOELACES</small></h2>
     <div class="chips" id="laces"></div>
   </section>
 
-  <section id="buckleSec" hidden>
+  <section class="need-data" id="buckleSec" hidden>
     <h2>釦子 <small>· BUCKLE</small></h2>
     <div class="chips" id="buckles"></div>
   </section>
 
-  <section class="done" id="secDone">
+  <section class="done need-data" id="secDone">
     <h3>完成你的設計 <small>· FINISHED</small></h3>
     <label class="note">留言給老闆阿昌:<textarea id="note" rows="3" maxlength="300" placeholder="Leave a message…"></textarea></label>
     <button class="need-size" type="button" id="needSize" hidden>還沒選尺寸 · Size not chosen</button>
@@ -264,14 +271,14 @@ h2 small { font-size: inherit; font-weight: 400; }
 <div class="sheet fold" id="sheet" data-fold="sheet">
   <div class="head sheet-head"><span class="grip" aria-hidden="true"></span><h2>色卡 <small>· SWATCHES</small></h2></div>
   <div class="body sheet-body">
-    <div class="fold src-fold" data-fold="source">
+    <div class="fold src-fold need-data" data-fold="source">
       <div class="head"><h3 class="src-head">材質來源 <small>· SELECT SOURCE</small></h3><button class="tog" type="button" aria-label="展開或收起材質來源"></button></div>
       <div class="sources body">
         <label class="src"><svg viewBox="0 0 40 40" fill="none" stroke="#111" stroke-width="2.6" stroke-linejoin="round"><path d="M4 12h8l3-5h10l3 5h8v22H4z"/><circle cx="20" cy="22" r="7"/><circle cx="31" cy="16" r=".6" fill="#111"/></svg>相機 Camera<input id="snapCam" type="file" accept="image/*" capture="environment"></label>
         <label class="src"><svg viewBox="0 0 40 40" fill="none" stroke="#111" stroke-width="2.6" stroke-linejoin="round"><rect x="5" y="6" width="30" height="28" rx="1"/><path d="M5 30l9-9 7 6 5-4 9 8"/><circle cx="14" cy="14" r="2" fill="#111"/></svg>相簿 Photos<input id="snapAlbum" type="file" accept="image/*"></label>
       </div>
     </div>
-      <div id="mineWrap" hidden>
+      <div class="need-data" id="mineWrap" hidden>
         <div class="mine-head"><span>我的色卡 My swatches</span><button class="link" type="button" id="editMine">編輯 Edit</button></div>
         <div class="swatches" id="mine"></div>
       </div>
@@ -401,19 +408,26 @@ const addMyPhotos = () => myPhotos.forEach(m => PRINT[m.key] = { ...m, mine: tru
 // The shop's own swatch photos, published (cropped, listed in swatches.json) by the aika_swatches site. The file name is the swatch's code.
 const SWATCH_SITE = "https://willmore-pixel.github.io/aika_swatches/";
 let SHOP = [];
+// LOAD: "wait" until each file has come, "ok", or "fail" (no connection, or no answer in 20 seconds).
+const LOAD = { shop: "wait", styles: "wait" };
+const fetchJson = async name => {
+  const r = await fetch(SWATCH_SITE + name, { cache: "no-store", ...(window.AbortSignal && AbortSignal.timeout ? { signal: AbortSignal.timeout(20000) } : {}) });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+};
 async function loadShop() {
   try {
-    const r = await fetch(SWATCH_SITE + "swatches.json", { cache: "no-store" });
-    if (r.ok) SHOP = (await r.json()).map(x => ({ key: "shop/" + x.file, name: x.name, kind: x.kind, url: SWATCH_SITE + x.file, shop: true, cm: x.cm }));
-  } catch {}
+    SHOP = (await fetchJson("swatches.json")).map(x => ({ key: "shop/" + x.file, name: x.name, kind: x.kind, url: SWATCH_SITE + x.file, shop: true, cm: x.cm }));
+    LOAD.shop = "ok";
+  } catch { LOAD.shop = "fail"; }
   SHOP.forEach(x => PRINT[x.key] = x);
 }
 async function loadStyles() {
   try {
-    const r = await fetch(SWATCH_SITE + "styles.json", { cache: "no-store" });
-    const list = r.ok ? await r.json() : [];
+    const list = await fetchJson("styles.json");
     if (list.length) STYLES = Object.fromEntries(list.map(({ id, ...s }) => [id, s]));
-  } catch {}
+    LOAD.styles = "ok";
+  } catch { LOAD.styles = "fail"; return; }
   if (!STYLES[state.style]) state.style = Object.keys(STYLES)[0];
 }
 addMyPhotos();
@@ -794,8 +808,9 @@ function renderSwatches() {
   $("editMine").textContent = editing ? "完成 Done" : "編輯 Edit";
   const leather = [...SHOP.filter(x => x.kind === "leather").map(x => "print:" + x.key), ...(SAMPLES ? COLOURS.map(c => c[1]) : [])];
   const fabric = [...SHOP.filter(x => x.kind !== "leather"), ...(SAMPLES ? PRINTS : [])].map(x => "print:" + x.key);
-  $("leather").innerHTML = leather.map(it => tile(it)).join("") || `<p class="empty">還沒有皮料色卡 · No leather swatches yet</p>`;
-  $("fabric").innerHTML = fabric.map(it => tile(it)).join("") || `<p class="empty">還沒有布料色卡 · No fabric swatches yet</p>`;
+  const none = LOAD.shop === "fail" ? `<p class="empty">讀不到色卡，請檢查網路再重新整理<br>Can't load swatches. Check your connection and reload.</p>` : "";
+  $("leather").innerHTML = leather.map(it => tile(it)).join("") || none || `<p class="empty">還沒有皮料色卡 · No leather swatches yet</p>`;
+  $("fabric").innerHTML = fabric.map(it => tile(it)).join("") || none || `<p class="empty">還沒有布料色卡 · No fabric swatches yet</p>`;
   document.querySelectorAll(".sw[data-it]").forEach(b => b.addEventListener("click", () => {
     const it = b.dataset.it;
     if (editing && b.closest("#mine")) return removePhoto(it.slice(6));
@@ -1299,11 +1314,21 @@ $("note").addEventListener("input", () => store.set("aika-play-note", $("note").
 if (LINE_URL) $("lineBtn").href = LINE_URL;
 else $("lineBtn").addEventListener("click", async e => { e.preventDefault(); const f = await makePicture(); if (!(await sharePicture(f))) showResult(f); });
 
-// The style saved on this phone may be one from the swatch site, which hasn't loaded yet: show a built-in one until it has.
-const savedStyle = state.style, standIn = STYLES[savedStyle] ? null : (state.style = Object.keys(STYLES)[0]);
-renderAll();
+// The styles and the shop's swatches come from the swatch site. Until they have come, a note shows where the styles
+// and the shoe go (nothing is drawn, so no other style shows meanwhile); if they can't come, the note asks for a reload.
+const loadNote = (zh, en, again) => {
+  $("loadNote").innerHTML = `<b>${zh}</b>${en}` + (again ? `<br><button type="button" id="reload">重新整理 · Reload</button>` : "");
+  if (again) $("reload").addEventListener("click", () => location.reload());
+  ["leather", "fabric"].forEach(id => $(id).innerHTML = `<p class="empty">${zh} · ${en}</p>`);
+};
+document.body.dataset.load = "wait";
+loadNote("載入中…", "Loading…");
 Promise.all([loadShop(), loadStyles()]).then(() => {
-  if (standIn && state.style === standIn && STYLES[savedStyle]) state.style = savedStyle;
+  if (LOAD.styles === "fail") {
+    document.body.dataset.load = "fail";
+    return loadNote("讀不到鞋款，請檢查網路再重新整理", "Can't load the styles. Check your connection and reload.", true);
+  }
+  delete document.body.dataset.load;
   tidyState(); sel = firstSel(); renderAll();
 });
 </script>
