@@ -782,7 +782,8 @@ $("stage").addEventListener("click", e => {
 // A swatch item is a colour ("#RRGGBB") or a photo/print key ("print:key").
 const isPrint = it => it.startsWith("print:");
 // A shop swatch's file name is "編號 (名稱)", e.g. "cw-01(黑色牛皮)": split it into its code and its name (either bracket kind, closing one optional).
-const splitName = n => { const m = /^(.*?)\s*[(（]\s*(.*?)\s*[)）]?\s*$/.exec(n || ""); return m && m[1] ? [m[1], m[2]] : [n || "", ""]; };
+// "Calico-110 (印花)" = code + name. When the part before the brackets has Chinese in it (蕾絲豬皮（粉）), it is a name, not a code: the whole thing is the name.
+const splitName = n => { const m = /^(.*?)\s*[(（]\s*(.*?)\s*[)）]?\s*$/.exec(n || ""); return m && m[1] && !/[\u3400-\u9fff]/.test(m[1]) ? [m[1], m[2]] : [n || "", ""]; };
 const codeOf = s => s.p ? (PRINT[s.p] || {}).name || "—" : s.c ? CODE[s.c.toLowerCase()] || s.c.toUpperCase() : "—";
 const has = (s, it) => isPrint(it) ? s.p === it.slice(6) : !s.p && same(s.c, it);
 const onAll = it => sel.size > 0 && [...sel].every(k => has(state[k[0]][k.slice(2)], it));
