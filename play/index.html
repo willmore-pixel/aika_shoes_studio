@@ -869,7 +869,11 @@ function sizesFor(k = state.style) {
 }
 const sizeOk = z => !z || (sizesFor()[z.g] || []).includes(z.v);
 function renderSizes() {
-  if (!sizeOk(state.size)) { state.size = null; save(); }
+  // A size picked on another style that this one has only under another line (中性款 ↔ 女款/男款) carries over: EU 38 is EU 38.
+  if (!sizeOk(state.size)) {
+    const z = state.size, g = z && (z.g === "unisex" ? ["women", "men"] : ["unisex"]).find(g => (sizesFor()[g] || []).includes(z.v));
+    state.size = g ? { g, v: z.v } : null; save();
+  }
   const z = state.size;
   $("sizeNow").textContent = z ? `EU ${z.v} ${SIZE_ZH[z.g]}` : "";
   $("needSize").hidden = !!z;
