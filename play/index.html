@@ -145,6 +145,7 @@ body[data-load] .load-note { display: block; }
 .big.save { background: var(--chip); }
 /* A small line over the save button while no size is picked; tapping it goes to 尺寸. */
 .need-size { display: block; margin: 0 auto 10px; padding: 4px 6px; border: 0; background: none; font: inherit; font-size: var(--text); color: #b3261e; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.need-size[hidden] { display: none; }  /* else display: block keeps it showing after a size is chosen */
 .big.save[aria-busy="true"] { opacity: .6; }
 .big.line { border: 1px solid var(--chip); text-decoration: none; color: inherit; }
 .big small { display: block; font-size: var(--text); color: #444; letter-spacing: .01em; }
