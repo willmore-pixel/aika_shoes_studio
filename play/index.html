@@ -111,8 +111,7 @@ h2 small { font-size: inherit; font-weight: 400; }
 
 .sub { padding: 18px 0 4px; }
 .sub + .sub { padding-top: 6px; }
-.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
-@media (max-width: 360px) { .swatches { grid-template-columns: repeat(5, 1fr); } }
+.swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 .sw { position: relative; aspect-ratio: 1; border-radius: 9px; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
 .sw[aria-pressed="true"] { outline: 2.5px solid var(--fg); outline-offset: 2.5px; }
 .sw[aria-disabled="true"] { opacity: .22; }
@@ -346,7 +345,9 @@ const buckleDef = (id, name) => { const [a, b, c] = BUCKLES[name] || BUCKLES.Gol
   return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="9" y2="9" spreadMethod="reflect"><stop offset="0" stop-color="${a}"/><stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></linearGradient>`; };
 const SIZES = { women: ["34.5","35","35.5","36","36.5","37","37.5","38","38.5","39","39.5","40","40.5","41","41.5","42","42.5","43","43.5","44","44.5","45"],
                 men: ["38.5","39","39.5","40","40.5","41","41.5","42","42.5","43","43.5","44","44.5","45"] };
-const SIZE_ZH = { women: "女款 Women", men: "男款 Men" };
+// A unisex style (中性款) has one line of sizes, from the smallest women's size to the biggest men's.
+SIZES.unisex = SIZES.women;
+const SIZE_ZH = { women: "女款 Women", men: "男款 Men", unisex: "中性款 Unisex" };
 
 // The shop's own demo prints (from the project's "pattern" folder).
 const PRINTS = [
@@ -436,6 +437,8 @@ addMyPhotos();
 const blank = () => Object.fromEntries(PARTS.map(p => [p, { c: null, p: null }]));
 let state = store.get("aika-play-1", null) || { style: "lite", size: null, L: blank(), R: blank(), sole: "Beige", lace: "Beige", buckle: "Gold" };
 // A phone that saved its design before a style had this many parts gets the new parts blank (else the first drawing fails).
+// The thick sole was called 厚底 before it was renamed 登山底 (Lug Sole).
+if (state.sole === "厚底") state.sole = "登山底";
 ["L", "R"].forEach(f => { state[f] = state[f] || {}; PARTS.forEach(p => state[f][p] = state[f][p] || { c: null, p: null }); });
 const tidyState = () => ["L", "R"].forEach(f => PARTS.forEach(p => {
   const s = state[f][p] = state[f][p] || { c: null, p: null };
@@ -831,7 +834,7 @@ function pick(it) {
 }
 
 // Sole, lace and buckle choices shown in both languages (the stored name stays as it is).
-const NAME_ZH = { Beige: "米色", Coffee: "咖啡", Black: "黑", White: "白", Natural: "原色", Gold: "金", Silver: "銀" }, NAME_EN = { "厚底": "Flatform" };
+const NAME_ZH = { Beige: "米色", Coffee: "咖啡", Black: "黑", White: "白", Natural: "原色", Gold: "金", Silver: "銀" }, NAME_EN = { "登山底": "Lug Sole", "厚底": "Flatform" };
 const biName = n => /[\u4e00-\u9fff]/.test(n) ? (NAME_EN[n] ? `${n} ${NAME_EN[n]}` : n) : (NAME_ZH[n] ? `${NAME_ZH[n]} ${n}` : n);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 // A bilingual name ("牛津鞋 / Oxford") shows on two lines: Chinese, then English.
@@ -856,7 +859,7 @@ function renderStyles() {
   });
 }
 
-// A style can be made in only some sizes (st.sizes = { women: [from, to], men: [from, to] }, st.whole, set on the upload page).
+// A style can be made in only some sizes (st.sizes = { women: [from, to], men: [from, to] } or { unisex: [from, to] }, st.whole, set on the upload page).
 function sizesFor(k = state.style) {
   const r = STYLES[k].sizes;
   const out = !r ? SIZES : Object.fromEntries(Object.entries(r).filter(([g]) => SIZES[g]).map(([g, [a, b]]) => [g, SIZES[g].slice(SIZES[g].indexOf(a), SIZES[g].indexOf(b) + 1)]));
