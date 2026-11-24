@@ -782,7 +782,8 @@ $("stage").addEventListener("click", e => {
 // A swatch item is a colour ("#RRGGBB") or a photo/print key ("print:key").
 const isPrint = it => it.startsWith("print:");
 // A shop swatch's file name is "編號 (名稱)", e.g. "cw-01(黑色牛皮)": split it into its code and its name (either bracket kind, closing one optional).
-const splitName = n => { const m = /^(.*?)\s*[(（]\s*(.*?)\s*[)）]?\s*$/.exec(n || ""); return m && m[1] ? [m[1], m[2]] : [n || "", ""]; };
+// Same rule as the upload page: "編號 (名稱)" with plain brackets; full-width brackets（）are part of a name (蕾絲豬皮（粉）).
+const splitName = n => { const m = /^([^()]+?)\s*\((.+)\)$/.exec(n || ""); return m ? [m[1].trim(), m[2].trim()] : [n || "", ""]; };
 const codeOf = s => s.p ? (PRINT[s.p] || {}).name || "—" : s.c ? CODE[s.c.toLowerCase()] || s.c.toUpperCase() : "—";
 const has = (s, it) => isPrint(it) ? s.p === it.slice(6) : !s.p && same(s.c, it);
 const onAll = it => sel.size > 0 && [...sel].every(k => has(state[k[0]][k.slice(2)], it));
@@ -801,7 +802,7 @@ function tile(it, removable) {
   const p = isPrint(it) && PRINT[it.slice(6)], name = p ? p.name : CODE[it.toLowerCase()];
   const look = p ? `background-image:url('${p.url}')` : `background:${it}`;
   const [code, nm] = splitName(name);  // the panel shows the name, or the code when there is none
-  return `<figure class="swc"><button class="sw" type="button" title="${name}" aria-label="${name}" aria-pressed="${onAll(it)}"${fitsSel(it) ? "" : ' aria-disabled="true"'} data-it="${it}" style="${look}">${removable ? '<span class="x" aria-hidden="true">×</span>' : ""}</button><figcaption${fitsSel(it) ? "" : ' class="off"'}>${nm ? `<span>${nm}</span>` : `<b>${code}</b>`}</figcaption></figure>`;
+  return `<figure class="swc"><button class="sw" type="button" title="${name}" aria-label="${name}" aria-pressed="${onAll(it)}"${fitsSel(it) ? "" : ' aria-disabled="true"'} data-it="${it}" style="${look}">${removable ? '<span class="x" aria-hidden="true">×</span>' : ""}</button><figcaption${fitsSel(it) ? "" : ' class="off"'}><span>${nm || code}</span></figcaption></figure>`;
 }
 function renderSwatches() {
   const mine = [...myPhotos].reverse().map(m => "print:" + m.key);
